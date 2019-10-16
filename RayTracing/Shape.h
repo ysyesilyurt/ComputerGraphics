@@ -33,6 +33,8 @@ public:
 
 private:
 	// Write any other stuff here
+	Vector3f center;
+	float radius;
 };
 
 // Class for triangle
@@ -45,6 +47,9 @@ public:
 
 private:
 	// Write any other stuff here
+	Vector3f p1;
+	Vector3f p2;
+	Vector3f p3;
 };
 
 // Class for mesh
@@ -57,6 +62,7 @@ public:
 
 private:
 	// Write any other stuff here
+	vector<Triangle> triangles;
 };
 
 #endif
