@@ -19,13 +19,16 @@ void Scene::renderScene(void)
      *                                             *
      ***********************************************
 
-	 Create an Image instance
-	 Ray trace for each camera:
-		For each pixel:
-			Find view rays
-			From intersection point, find shadow rays
-			Compute rgb values of each pixel on image instance's data**
-	 	Call save image
+	 Ray trace for each camera x:
+        Create an Image instance (according to ImagePlane values of camera x)
+            For each pixel i in Image:
+                Calculate primary ray from Camera x that goes through pixel i
+                Calculate the nearest intersection point calling Shape's intersect with calculated primary ray
+                    - Recursively track the ray acc. to maxRecDepth
+                    - Generate shadow rays to each light source from calculated intersection point (using Light's computeLightCont ?)
+                        ? - Basic Illumination Model of Material properties Diffuse, Ambient, Specular ?
+                Compute rgb value of pixel i according to results and fill it in Image instance
+	 	Call save image and save the image
 	 */
 }
 
