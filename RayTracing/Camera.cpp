@@ -50,9 +50,9 @@ Ray Camera::getPrimaryRay(int row, int col) const
                             scalarMultipleVector(j, this->up))), origin);
 
     Ray * ray = new Ray(this->pos, rayDirection);
-	// t of ray?
-	// TODO Normalize the ray
+	normalize(ray->direction);
 
+    // TODO t of ray?
 	return *ray;
 }
 
