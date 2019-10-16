@@ -18,6 +18,9 @@ public:
 
 private:
 	// Write any other stuff here. 
+	Vector3f scalarMultipleVector(float scale, const Vector3f vector, int type = 0) const;
+	Vector3f vectorSubtract(Vector3f first, const Vector3f second, int type = 0) const;
+	Vector3f vectorSum(Vector3f first, const Vector3f second, int type = 0) const;
 };
 
 #endif
