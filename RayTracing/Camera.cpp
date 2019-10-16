@@ -41,7 +41,7 @@ Ray Camera::getPrimaryRay(int col, int row) const
 	 */
 	 float i = (this->imgPlane.left - this->imgPlane.right) * (row + 0.5) / this->imgPlane.nx;
 	 float j = (this->imgPlane.top - this->imgPlane.bottom) * (col + 0.5) / this->imgPlane.ny;
-	 Vector3f direction = {i, j, this->gaze.z}; // is z coordinate True?
+	 Vector3f direction = {i, j, -this->imgPlane.distance}; // or z = this->gaze.z? CHECK FROM other hws
 	 Ray * ray = new Ray(this->pos, direction);
 	 return *ray;
 }
