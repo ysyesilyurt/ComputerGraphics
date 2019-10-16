@@ -15,5 +15,11 @@ Vector3f PointLight::computeLightContribution(const Vector3f& p)
 	 * TODO: Implement this function               *
      *                                             *
      ***********************************************
+
+     Compute light amount using:
+        shadow ray (light position and point)
+        surface normal
+        intensity of source
+    --inverse square law formula--
 	 */
 }

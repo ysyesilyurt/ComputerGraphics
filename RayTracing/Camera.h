@@ -36,7 +36,9 @@ public:
 private:
     //
 	// You can add member functions and variables here
+    // ADD POS, GAZE, UP as appropriate variables to this section
     //
 };
 
 #endif
+

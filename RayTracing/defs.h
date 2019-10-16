@@ -14,6 +14,9 @@ typedef struct ReturnVal
 	 * TODO: Implement this structure              *
      *                                             *
      ***********************************************
+
+	 Add variables with appropriate types:
+	 	t, normal vector of surface, intersection point
 	 */
 } ReturnVal;
 

@@ -18,6 +18,14 @@ void Scene::renderScene(void)
 	 * TODO: Implement this function               *
      *                                             *
      ***********************************************
+
+	 Create an Image instance
+	 Ray trace for each camera:
+		For each pixel:
+			Find view rays
+			From intersection point, find shadow rays
+			Compute rgb values of each pixel on image instance's data**
+	 	Call save image
 	 */
 }
 

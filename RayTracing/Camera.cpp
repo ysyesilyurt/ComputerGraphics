@@ -7,11 +7,13 @@ Camera::Camera(int id,                      // Id of the camera
                const Vector3f& up,          // Camera up direction
                const ImagePlane& imgPlane)  // Image plane parameters
 {
-	/***********************************************
+	/**********************************************
      *                                             *
-	 * TODO: Implement this function               *
+	* TODO: Implement this function               *
      *                                             *
      ***********************************************
+     ADD up,pos,gaze as variables to private section
+     Map everything
 	 */
 }
 
@@ -20,11 +22,15 @@ Camera::Camera(int id,                      // Id of the camera
  */
 Ray Camera::getPrimaryRay(int col, int row) const
 {
-	/***********************************************
+	/**********************************************
      *                                             *
-	 * TODO: Implement this function               *
+	* TODO: Implement this function               *
      *                                             *
      ***********************************************
+     
+     Calculate the ray parameters based on pixel, e and gaze
+     Create the ray instance
+     Return the ray through point
 	 */
 }
 
