@@ -18,12 +18,8 @@ Sphere::Sphere(void)
 Sphere::Sphere(int id, int matIndex, int cIndex, float R)
     : Shape(id, matIndex)
 {
-	/***********************************************
-     *                                             *
-	 * TODO: Implement this function               *
-     *                                             *
-     ***********************************************
-	 */
+    this->center = pScene->vertices[cIndex];
+    this->radius = R;
 }
 
 /* Sphere-ray intersection routine. You will implement this. 
@@ -46,12 +42,9 @@ Triangle::Triangle(void)
 Triangle::Triangle(int id, int matIndex, int p1Index, int p2Index, int p3Index)
     : Shape(id, matIndex)
 {
-	/***********************************************
-     *                                             *
-	 * TODO: Implement this function               *
-     *                                             *
-     ***********************************************
-	 */
+    this->p1 = pScene->vertices[p1Index];
+    this->p2 = pScene->vertices[p2Index];
+    this->p3 = pScene->vertices[p3Index];
 }
 
 /* Triangle-ray intersection routine. You will implement this. 
@@ -74,12 +67,10 @@ Mesh::Mesh()
 Mesh::Mesh(int id, int matIndex, const vector<Triangle>& faces)
     : Shape(id, matIndex)
 {
-	/***********************************************
-     *                                             *
-	 * TODO: Implement this function               *
-     *                                             *
-     ***********************************************
-	 */
+    int size = faces.size();
+    for(int i=0; i<size; i++) this->triangles[i] = faces[i];
+    // this guy could be a lot faster but less safe           @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    //  just make triangles a pointer and assign it to address of faces
 }
 
 /* Mesh-ray intersection routine. You will implement this. 
