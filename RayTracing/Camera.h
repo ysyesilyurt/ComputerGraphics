@@ -34,13 +34,10 @@ public:
 	Ray getPrimaryRay(int row, int col) const;
 
 private:
-    //
-	// You can add member functions and variables here
-    // TODO: ADD POS, GAZE, UP as appropriate variables to this section
-    //
     Vector3f pos;
     Vector3f gaze;
     Vector3f up;
+    Vector3f right;
 };
 
 #endif

@@ -49,13 +49,15 @@ void Scene::renderScene(void)
                 Ray primRay = cameras[x]->getPrimaryRay(i, j);
 
                 //  Calculate the nearest intersection point calling Shape's intersect with calculated primary ray
-                // intersectionPoint = noIntersection
+                // intersectionPoint = INFINITY
                 for (int k = 0; k < objects.size(); ++k) {
                     // Intersect all shapes in scene with primRay and gather all ReturnVals
-                    // if (ReturnVal.hasintersection)
-                        // if (intersectionPoint > ReturnVal.intersection)
+                    // if (ReturnVal.hasintersection) => in t time
+                        // if (intersectionPoint > ReturnVal.intersection) => distance from origin
                             // update intersectionPoint
                 }
+
+                // if intersectionPoint == INFINITY then no intersection
 
                 // - Recursively track the ray acc. to maxRecDepth
                 // - Generate shadow rays to each light source from calculated intersection point (using Light's computeLightCont ?)
