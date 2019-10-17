@@ -84,13 +84,6 @@ inline Vector3f crossProduct(Vector3f first, Vector3f second)
 }
 
 
-/*
-Vector3f vectorSubtract(Vector3f first, Vector3f second, int type = 0);
-Vector3f scalarMultipleVector(float scale, Vector3f vector, int type = 0);
-Vector3f crossProduct(Vector3f first, Vector3f second);
-int dotProduct(Vector3f first, Vector3f second);
-*/
-
 
 
 #endif
