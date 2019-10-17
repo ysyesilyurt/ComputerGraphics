@@ -5,8 +5,74 @@
 #include "Shape.h"
 #include "tinyxml2.h"
 #include "Image.h"
+#include <limits>
 
 using namespace tinyxml2;
+const float INFINITY = numeric_limits<float>::max();
+
+ReturnVal intersectRay(Ray ray, const vector<Shape *> & objects) {
+
+    // Calculate the nearest intersection point calling Shape's intersect with calculated primary ray
+
+    ReturnVal intersection = {INFINITY, Vector3f{}, -1};
+    // For each object in the scene
+    // Intersect all shapes in scene with primRay and gather all ReturnVals
+    for (int k = 0; k < objects.size(); ++k) {
+        // if ray intersects k
+            // if t < intersection.t
+                // intersection.t = t
+                // update normal and materialId
+    }
+    return intersection;
+}
+
+Color calculateRadiance(Ray ray, ReturnVal intersection) {
+
+    Color pixelColor = {};
+
+    // Calculate Ambient shading and add it to pixelColor
+
+    // For each light i
+        // Compute the shadow ray s from intersection point to i
+        // Intersect s with all objects again to check if there is any obj between the light source and point
+        // If there is an intersection continue -- point is in shadow -- no contribution from this light
+        // Else calculate diffuse and specular shading from this light source and add them to the pixelColor -- there is contribution from this light source -- point is not in shadow
+
+    // If object has a ref. coeff. then Recursively track the ray acc. to maxRecDepth and calculate the reflectance contribution and finally add all of them to pixelColor
+
+    return pixelColor;
+}
+
+Color renderPixel(int row, int col, Camera * camera, const vector<Shape *> & objects, const Vector3f & bgroundColor) {
+
+    // Calculate primary ray from Camera x that goes through pixel
+    Ray primRay = camera->getPrimaryRay(row, col);
+
+    // Calculate nearest intersection
+    ReturnVal intersection = intersectRay(primRay, objects);
+
+    if (intersection.t != INFINITY) { // means that ray hit an object
+        return calculateRadiance(primRay, intersection) // + scene?
+    }
+    else { // no intersection, just set the pixel's color to background color
+        return { static_cast<unsigned char>(bgroundColor.r),
+                 static_cast<unsigned char>(bgroundColor.g),
+                 static_cast<unsigned char>(bgroundColor.b)};
+    }
+}
+
+void rayTracing(Image * image, Scene * scene, Camera * camera) {
+
+    // TODO: After basic functionality is implemented -- implement below section such that all threads get 1 row and handle it
+
+    // For each pixel in Image
+    for (int i = 0; i < camera->imgPlane.nx; ++i) {
+        for (int j = 0; j < camera->imgPlane.ny; ++j) {
+            Color colorOfPixel = renderPixel(i, j, camera, scene->objects, scene->backgroundColor);
+            image->setPixelValue(j, i, colorOfPixel);
+        }
+    }
+}
 
 /*
  * Must render the scene from each camera's viewpoint and create an image.
@@ -14,12 +80,8 @@ using namespace tinyxml2;
  */
 void Scene::renderScene(void)
 {
-    /***********************************************
-     *                                             *
-     * TODO: Implement this function               *
-     *                                             *
-     ***********************************************
-
+    /**
+     * TODO
      Ray trace for each camera x:
         Create an Image instance (according to ImagePlane values of camera x)
             For each pixel i in Image:
@@ -32,8 +94,6 @@ void Scene::renderScene(void)
          Call save image and save the image
      */
 
-    // TODO: DIVIDE BELOW CODE AS FUNCTIONS ACCORDING TO ABOVE FUNCTIONALITY !!
-
     for (int x = 0; x < cameras.size(); ++x) {
         Image * image = new Image(cameras[x]->imgPlane.left - cameras[x]->imgPlane.right,
                                   cameras[x]->imgPlane.top - cameras[x]->imgPlane.bottom);
@@ -42,30 +102,7 @@ void Scene::renderScene(void)
         for(int y = 0; y < cameras[x]->imgPlane.nx; ++y)
             image->data[y] = new Color[cameras[x]->imgPlane.ny];
 
-        // For each pixel in Image
-        for (int i = 0; i < cameras[x]->imgPlane.nx; ++i) {
-            for (int j = 0; j < cameras[x]->imgPlane.ny; ++j) {
-                // Calculate primary ray from Camera x that goes through pixel
-                Ray primRay = cameras[x]->getPrimaryRay(i, j);
-
-                //  Calculate the nearest intersection point calling Shape's intersect with calculated primary ray
-                // intersectionPoint = INFINITY
-                for (int k = 0; k < objects.size(); ++k) {
-                    // Intersect all shapes in scene with primRay and gather all ReturnVals
-                    // if (ReturnVal.hasintersection) => in t time
-                        // if (intersectionPoint > ReturnVal.intersection) => distance from origin
-                            // update intersectionPoint
-                }
-
-                // if intersectionPoint == INFINITY then no intersection
-
-                // - Recursively track the ray acc. to maxRecDepth
-                // - Generate shadow rays to each light source from calculated intersection point (using Light's computeLightCont ?)
-                   // ? - Basic Illumination Model of Material properties Diffuse, Ambient, Specular ?
-
-               // image->setPixelValue() // Compute rgb value of pixel i according to results and fill it in Image instance
-            }
-        }
+        rayTracing(image, this, cameras[x]);
         image->saveImage(cameras[x]->imageName);
     }
 }

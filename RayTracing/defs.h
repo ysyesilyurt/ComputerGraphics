@@ -72,7 +72,8 @@ typedef struct ReturnVal
 
 	float t;
 	Vector3f normal;
-	Vector3f intersection;
+//	Vector3f intersection;
+    int materialId;
 
 } ReturnVal;
 
