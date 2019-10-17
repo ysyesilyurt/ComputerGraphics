@@ -26,6 +26,41 @@ typedef struct Vector3f
 		float z;
 		float b;
 	};
+
+
+	inline Vector3f operator+(Vector3f a) const {
+		return {a.x+x,a.y+y,a.z+z};
+    }
+
+
+	inline Vector3f operator-(Vector3f a) const {
+		return {x-a.x, y-a.y, z-a.z};
+    }
+
+	inline Vector3f operator*(float a) const {
+		return {x*a, y*a, z*a};
+    }
+
+
+	inline Vector3f operator/(float a) const {
+		return {x/a, y/a, z/a};
+    }
+
+
+	inline Vector3f operator=(Vector3f a) { 	// bu calisiyo ama niye
+		x = a.x;
+		y = a.y;
+		z = a.z;
+		return a;
+    }
+
+    inline bool operator==(Vector3f a) const {
+       return (a.x == x && a.y == y && a.z == z);
+    }
+
+    inline bool operator!=(Vector3f a) const {
+       return (a.x != x || a.y != y || a.z != z);
+    }
 } Vector3f;
 
 /* Structure to hold return value from ray intersection routine. 
@@ -34,13 +69,7 @@ for example, coordinate of the intersection point, surface normal at the interse
 Think about the variables you will need for this purpose and declare them here inside of this structure. */
 typedef struct ReturnVal
 {
-	/***********************************************
-     *                                             *
-	 * TODO: Implement this structure              *
-     *                                             *
-     ***********************************************
-	
-	 */
+
 	float t;
 	Vector3f normal;
 	Vector3f intersection;
