@@ -11,27 +11,54 @@
 using namespace tinyxml2;
 const float INFINITY = numeric_limits<float>::max();
 
+IntersectionData intersectRay(const Ray & ray, const vector<Shape *> & objects) {
+
+    // Calculate the nearest intersection point calling Shape's intersect with calculated primary ray
+    IntersectionData intersection = {INFINITY, Vector3f{}, -1};
+    // For each object in the scene
+    // Intersect all shapes in scene with primRay and gather all IntersectionDatas
+    for (int k = 0; k < objects.size(); ++k) {
+        // TODO: Implement this function
+        // if ray intersects k
+        // if t < intersection.t
+        // intersection.t = t
+        // update normal and materialId
+    }
+    return intersection;
+}
+
+Color computeSpecular(const Material * material, const Vector3f & normalVector,
+                     const Vector3f & lightDirection, const Vector3f & irradiance, const Vector3f & halfVector) {
+    // (cosAlpha)^ns
+    float phongExponentCosAlpha = std::pow(std::max(0.0f, dotProduct(lightDirection, normalVector)), material->phongExp);
+    // (cosAlpha)^ns * E(d)
+    Vector3f specularWithoutCoeffs = irradiance * phongExponentCosAlpha;
+    // Multiplying with specular coeff
+    specularWithoutCoeffs.r *= material->specularRef.r
+    specularWithoutCoeffs.g *= material->specularRef.g
+    specularWithoutCoeffs.b *= material->specularRef.b
+
+    return specularWithoutCoeffs; // TODO casting V3f to Color!
+}
+
+Color computeDiffuse(const Material * material, const Vector3f & normalVector,
+        const Vector3f & lightDirection, const Vector3f & irradiance) {
+    // cosTheta
+    float cosTheta = std::max(0.0f, dotProduct(lightDirection, normalVector));
+    // cosTheta * E(d)
+    Vector3f diffuseWithoutCoeffs = irradiance * cosTheta;
+    // Multiplying with diffuse coeff
+    diffuseWithoutCoeffs.r *= material->diffuseRef.r
+    diffuseWithoutCoeffs.g *= material->diffuseRef.g
+    diffuseWithoutCoeffs.b *= material->diffuseRef.b
+
+    return diffuseWithoutCoeffs; // TODO casting V3f to Color!
+}
 
 Color computeAmbient(const Material * material, const Vector3f & ambientLight) {
     return {material->ambientRef.r * ambientLight.r,
             material->ambientRef.g * ambientLight.g,
             material->ambientRef.b * ambientLight.b}; // check if we need xyz or not?
-}
-
-IntersectionData intersectRay(const Ray & ray, const vector<Shape *> & objects) {
-
-    // Calculate the nearest intersection point calling Shape's intersect with calculated primary ray
-
-    IntersectionData intersection = {INFINITY, Vector3f{}, -1};
-    // For each object in the scene
-    // Intersect all shapes in scene with primRay and gather all IntersectionDatas
-    for (int k = 0; k < objects.size(); ++k) {
-        // if ray intersects k
-            // if t < intersection.t
-                // intersection.t = t
-                // update normal and materialId
-    }
-    return intersection;
 }
 
 Color calculateRadiance(const Ray & ray, const IntersectionData & intersection, Scene * scene) {
@@ -44,41 +71,47 @@ Color calculateRadiance(const Ray & ray, const IntersectionData & intersection, 
     pixelColor = ambientContribution;
 
     Vector3f intersectionPoint = ray.origin + ray.direction * intersection.t;
-    Vector3f eyeVector = ray.origin - intersectionPoint; // subtract intPoint from camera's position (origin) and find w_0
+    Vector3f normalizedEyeVector = (ray.origin - intersectionPoint).normalize(); // subtract intPoint from camera's position (origin) and find w_0
 
     // For each light i
     for (int i = 0; i < scene->lights.size(); ++i) {
-        Vector3f lightDirection = (scene->lights[i]->position - intersectionPoint).normalize(); // normalized light direction
+        Vector3f normalizedLightDirection = (scene->lights[i]->position - intersectionPoint).normalize();
 
-        // Generate the shadow ray s from intersection point to i
+        // Cast the shadow ray s from intersection point to i
         Ray shadowRay;
-        Vector3f intOffset = scene->shadowRayEps * lightDirection;
+        Vector3f intOffset = scene->shadowRayEps * normalizedLightDirection;
         shadowRay.origin = intersectionPoint + intOffset;
-        shadowRay.direction = lightDirection;
+        shadowRay.direction = normalizedLightDirection;
 
         // Intersect s with all objects again to check if there is any obj between the light source and point
         IntersectionData shadowIntersection = intersectRay(shadowRay, scene->objects);
 
         // If there is an intersection continue -- point is in shadow -- no contribution from this light
-        if (shadowIntersection.t == INFINITY)
+        if (shadowIntersection.t == INFINITY) // TODO: GUY CHECKED HERE DIFFERENTLY? CHECK HERE!
             continue;
         else {
             // Else calculate diffuse and specular shading from this light source and add them to the pixelColor
             // -- there is contribution from this light source -- point is not in shadow
 
+            // Compute irradiance of light source i on intersection point
+            Vector3f irradianceContribution += scene->lights[i]->computeLightContribution(intersectionPoint);
 
             // computeDiffuse
-            Color diffuseContribution = computeDiffuse(material, ); // lightdirection w/o normalization!!
+            Vector3f diffuseContribution = computeDiffuse(material, intersection.normal,
+                                                          normalizedLightDirection, irradianceContribution);
             pixelColor += diffuseContribution;
 
             // computeSpecular
+            Vector3f normalizedHalfVector = (normalizedLightDirection + normalizedEyeVector).normalize();
+            Vector3f specularContribution = computeSpecular(material, intersection.normal, normalizedLightDirection,
+                    irradianceContribution, normalizedHalfVector);
             pixelColor += specularContribution;
-
         }
     }
 
-    // If object has a ref. coeff. then Recursively track the ray acc. to maxRecDepth and calculate the reflectance contribution and finally add all of them to pixelColor
+    // TODO: Handle reflectance of pixel
 
+    // TODO: dont forget to clamp the resulting pixelColor
     return pixelColor;
 }
 
