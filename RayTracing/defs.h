@@ -68,7 +68,7 @@ typedef struct Vector3f
         return std::sqrt(x*x + y*y + z*z);
     }
 
-    inline void normalize() {
+    inline Vector3f normalize() {
         float len = length();
         if (len == 0.0f) { // len is zero then return zero vector
             x = 0;
@@ -78,6 +78,7 @@ typedef struct Vector3f
         x /= len;
         y /= len;
         z /= len;
+        return {x,y,z};
     }
 } Vector3f;
 
