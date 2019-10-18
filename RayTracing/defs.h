@@ -1,6 +1,8 @@
 #ifndef _DEFS_H_
 #define _DEFS_H_
 
+#include <cmath>
+
 class Scene;
 
 
@@ -47,7 +49,7 @@ typedef struct Vector3f
     }
 
 
-	inline Vector3f operator=(Vector3f a) { 	// bu calisiyo ama niye
+	inline Vector3f operator=(Vector3f a) { 	// TODO bu calisiyo ama niye
 		x = a.x;
 		y = a.y;
 		z = a.z;
@@ -61,20 +63,36 @@ typedef struct Vector3f
     inline bool operator!=(Vector3f a) const {
        return (a.x != x || a.y != y || a.z != z);
     }
+
+    inline float length() {
+        return std::sqrt(x*x + y*y + z*z);
+    }
+
+    inline void normalize() {
+        float len = length();
+        if (len == 0.0f) { // len is zero then return zero vector
+            x = 0;
+            y = 0;
+            z = 0;
+        }
+        x /= len;
+        y /= len;
+        z /= len;
+    }
 } Vector3f;
 
 /* Structure to hold return value from ray intersection routine. 
 This should hold information related to the intersection point, 
 for example, coordinate of the intersection point, surface normal at the intersection point etc. 
 Think about the variables you will need for this purpose and declare them here inside of this structure. */
-typedef struct ReturnVal
+typedef struct IntersectionData
 {
 
 	float t;
 	Vector3f normal;
-	Vector3f intersection;
+    int materialId;
 
-} ReturnVal;
+} IntersectionData;
 
 
 //

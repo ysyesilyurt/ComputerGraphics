@@ -30,29 +30,28 @@ Ray Camera::getPrimaryRay(int row, int col) const
 
     Vector3f origin = this->pos;
 
-    // Vector3f imageCenter = origin + (this->gaze * this->imgPlane.distance); // m
-    Vector3f imageCenter = vectorSum(origin, (scalarMultipleVector(this->imgPlane.distance, this->gaze))); // m
+    // Vector3f imageCenter = vectorSum(origin, (scalarMultipleVector(this->imgPlane.distance, this->gaze))); // m
+     Vector3f imageCenter = origin + (this->gaze * this->imgPlane.distance); // m
 
-    // Vector3f topLeft = imageCenter + (this->imgPlane.left * this->right) + (this->imgPlane.top * this->up); // q
-    Vector3f topLeft = vectorSum(imageCenter,
-            vectorSum((scalarMultipleVector(this->imgPlane.left, this->right)),
-                    (scalarMultipleVector(this->imgPlane.top, this->up)))); // q
+//    Vector3f topLeft = vectorSum(imageCenter,
+//            vectorSum((scalarMultipleVector(this->imgPlane.left, this->right)),
+//                    (scalarMultipleVector(this->imgPlane.top, this->up)))); // q
+    Vector3f topLeft = imageCenter + (this->right * this->imgPlane.left) + (this->up * this->imgPlane.top ); // q
 
     float i = (this->imgPlane.right - this->imgPlane.left) * (row + 0.5) / this->imgPlane.nx; // s_u
     float j = (this->imgPlane.top - this->imgPlane.bottom) * (col + 0.5) / this->imgPlane.ny; // s_v
 
     // {i, j, -this->imgPlane.distance}; // or z = this->gaze.z?
-    // Vector3f targetDirection = topLeft + (i * this->right) - (j * this->up) - origin;
-    Vector3f rayDirection = vectorSubtract(
-            vectorSum(topLeft,
-                    vectorSubtract(
-                            scalarMultipleVector(i, this->right),
-                            scalarMultipleVector(j, this->up))), origin);
+//    Vector3f rayDirection = vectorSubtract(
+//            vectorSum(topLeft,
+//                    vectorSubtract(
+//                            scalarMultipleVector(i, this->right),
+//                            scalarMultipleVector(j, this->up))), origin);
+    Vector3f rayDirection = topLeft + (this->right * i) - (this->up * j) - origin;
 
     Ray * ray = new Ray(this->pos, rayDirection);
-	normalize(ray->direction);
+	ray->direction.normalize(); // We have to normalize the direction to the length of 1 so it doesn't skew our results
 
-    // TODO t of ray?
-	return *ray;
+    return *ray;
 }
 
