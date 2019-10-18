@@ -58,6 +58,7 @@ IntersectionData Triangle::intersect(const Ray & ray) const
      *                                             *
      ***********************************************
 	 */
+    // TODO: check if /d.n is zero => dont get zero division error
 }
 
 Mesh::Mesh()
@@ -69,7 +70,7 @@ Mesh::Mesh(int id, int matIndex, const vector<Triangle>& faces)
 {
     int size = faces.size();
     for(int i=0; i<size; i++) this->triangles[i] = faces[i];
-    // this guy could be a lot faster but less safe           @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+    // TODO: this guy could be a lot faster but less safe           @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     //  just make triangles a pointer and assign it to address of faces
 }
 

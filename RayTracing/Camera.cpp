@@ -50,7 +50,7 @@ Ray Camera::getPrimaryRay(int row, int col) const
     Vector3f rayDirection = topLeft + (this->right * i) - (this->up * j) - origin;
 
     Ray * ray = new Ray(this->pos, rayDirection);
-	normalize(ray->direction); // We have to normalize the direction to the length of 1 so it doesn't skew our results
+	ray->direction.normalize(); // We have to normalize the direction to the length of 1 so it doesn't skew our results
 
     return *ray;
 }
