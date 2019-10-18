@@ -10,13 +10,13 @@
 using namespace tinyxml2;
 const float INFINITY = numeric_limits<float>::max();
 
-ReturnVal intersectRay(Ray ray, const vector<Shape *> & objects) {
+IntersectionData intersectRay(Ray ray, const vector<Shape *> & objects) {
 
     // Calculate the nearest intersection point calling Shape's intersect with calculated primary ray
 
-    ReturnVal intersection = {INFINITY, Vector3f{}, -1};
+    IntersectionData intersection = {INFINITY, Vector3f{}, -1};
     // For each object in the scene
-    // Intersect all shapes in scene with primRay and gather all ReturnVals
+    // Intersect all shapes in scene with primRay and gather all IntersectionDatas
     for (int k = 0; k < objects.size(); ++k) {
         // if ray intersects k
             // if t < intersection.t
@@ -26,7 +26,7 @@ ReturnVal intersectRay(Ray ray, const vector<Shape *> & objects) {
     return intersection;
 }
 
-Color calculateRadiance(Ray ray, ReturnVal intersection) {
+Color calculateRadiance(Ray ray, IntersectionData intersection) {
 
     Color pixelColor = {};
 
@@ -49,10 +49,10 @@ Color renderPixel(int row, int col, Camera * camera, const vector<Shape *> & obj
     Ray primRay = camera->getPrimaryRay(row, col);
 
     // Calculate nearest intersection
-    ReturnVal intersection = intersectRay(primRay, objects);
+    IntersectionData intersection = intersectRay(primRay, objects);
 
     if (intersection.t != INFINITY) { // means that ray hit an object
-        return calculateRadiance(primRay, intersection) // + scene?
+        return calculateRadiance(primRay, intersection); // + scene?
     }
     else { // no intersection, just set the pixel's color to background color
         return { static_cast<unsigned char>(bgroundColor.r),

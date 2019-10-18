@@ -67,7 +67,7 @@ typedef struct Vector3f
 This should hold information related to the intersection point, 
 for example, coordinate of the intersection point, surface normal at the intersection point etc. 
 Think about the variables you will need for this purpose and declare them here inside of this structure. */
-typedef struct ReturnVal
+typedef struct IntersectionData
 {
 
 	float t;
@@ -75,7 +75,7 @@ typedef struct ReturnVal
 //	Vector3f intersection;
     int materialId;
 
-} ReturnVal;
+} IntersectionData;
 
 
 //
