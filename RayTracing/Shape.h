@@ -34,7 +34,7 @@ public:
 private:
 	// Write any other stuff here
 	Vector3f center;
-	float radius;
+	float radiusSquare;
 };
 
 // Class for triangle
