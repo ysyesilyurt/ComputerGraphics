@@ -33,7 +33,7 @@ public:
 
 private:
 	// Write any other stuff here
-	Vector3f center;
+	int centerIndex;
 	float radiusSquare;
 };
 
@@ -47,9 +47,9 @@ public:
 
 private:
 	// Write any other stuff here
-	Vector3f p1;
-	Vector3f p2;
-	Vector3f p3;
+	int p1index;
+	int p2index;
+	int p3index;
 };
 
 // Class for mesh
