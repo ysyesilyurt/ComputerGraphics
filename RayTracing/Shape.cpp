@@ -115,7 +115,7 @@ Mesh::Mesh(int id, int matIndex, const vector<Triangle>& faces)
     : Shape(id, matIndex)
 {
     int size = faces.size();
-    for(int i=0; i<size; i++) this->triangles[i] = faces[i];
+    this->triangles = faces;
     // TODO: this guy could be a lot faster but less safe           @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     //  just make triangles a pointer and assign it to address of faces
 }
