@@ -9,76 +9,149 @@
 #include <limits>
 
 using namespace tinyxml2;
-const float INFINITY = numeric_limits<float>::max();
-
-
-Color computeAmbient(const Material * material, const Vector3f & ambientLight) {
-    return {material->ambientRef.r * ambientLight.r,
-            material->ambientRef.g * ambientLight.g,
-            material->ambientRef.b * ambientLight.b}; // check if we need xyz or not?
-}
+const float INF = numeric_limits<float>::max();
 
 IntersectionData intersectRay(const Ray & ray, const vector<Shape *> & objects) {
 
-    // Calculate the nearest intersection point calling Shape's intersect with calculated primary ray
+    /* Calculate the nearest intersection point calling Shape's intersect with given ray */
 
-    IntersectionData intersection = {INFINITY, Vector3f{}, -1};
-    // For each object in the scene
-    // Intersect all shapes in scene with primRay and gather all IntersectionDatas
-    for (int k = 0; k < objects.size(); ++k) {
-        // if ray intersects k
-            // if t < intersection.t
-                // intersection.t = t
-                // update normal and materialId
+    IntersectionData minIntersection = {INF, {}, -1};
+    // For each object in the scene Intersect ray with all the shapes in scene and get the nearest one
+    for (int i = 0; i < objects.size(); ++i) {
+        IntersectionData tempIntersection = objects[i]->intersect(ray); // calling object's own intersect method
+        if (tempIntersection.t != INF) {
+            if (minIntersection.t > tempIntersection.t) {
+                minIntersection = tempIntersection;
+            }
+        }
     }
-    return intersection;
+    return minIntersection;
 }
 
-Color calculateRadiance(const Ray & ray, const IntersectionData & intersection, Scene * scene) {
+Vector3f computeSpecular(const Material * material, const Vector3f & normalVector,
+                     const Vector3f & lightDirection, const Vector3f & irradiance, const Vector3f & halfVector) {
 
-    Color pixelColor = {};
-    Material * material = scene->materials[intersection.materialId - 1];
+    // (cosAlpha)^ns
+    float phongExponentCosAlpha = pow(max(0.0f, dotProduct(lightDirection, normalVector)), material->phongExp);
+    // (cosAlpha)^ns * E(d)
+    Vector3f specularWithoutCoeffs = irradiance * phongExponentCosAlpha;
+    // Multiplying with specular coeff
+    specularWithoutCoeffs.r *= material->specularRef.r;
+    specularWithoutCoeffs.g *= material->specularRef.g;
+    specularWithoutCoeffs.b *= material->specularRef.b;
+
+    return specularWithoutCoeffs;
+}
+
+Vector3f computeDiffuse(const Material * material, const Vector3f & normalVector,
+        const Vector3f & lightDirection, const Vector3f & irradiance) {
+
+    // cosTheta
+    float cosTheta = max(0.0f, dotProduct(lightDirection, normalVector));
+    // cosTheta * E(d)
+    Vector3f diffuseWithoutCoeffs = irradiance * cosTheta;
+    // Multiplying with diffuse coeff
+    diffuseWithoutCoeffs.r *= material->diffuseRef.r;
+    diffuseWithoutCoeffs.g *= material->diffuseRef.g;
+    diffuseWithoutCoeffs.b *= material->diffuseRef.b;
+
+    return diffuseWithoutCoeffs;
+}
+
+Vector3f computeAmbient(const Material * material, const Vector3f & ambientLight) {
+    return {material->ambientRef.r * ambientLight.r,
+            material->ambientRef.g * ambientLight.g,
+            material->ambientRef.b * ambientLight.b};
+}
+
+Vector3f computeRadiance(const Ray & ray, const IntersectionData & intersection, Scene * scene, int remainingRecursion) {
+
+    Vector3f pixelColor = {};
+    Material * intersectionMaterial = scene->materials[intersection.materialId - 1];
 
     // Calculate Ambient shading and add it to pixelColor (adding ambient directly to all pixels)
-    Color ambientContribution = computeAmbient(material, ambientLight);
+    Vector3f ambientContribution = computeAmbient(intersectionMaterial, scene->ambientLight);
     pixelColor = ambientContribution;
 
-    Vector3f intersectionPoint = ray.origin + ray.direction * intersection.t;
-    Vector3f eyeVector = ray.origin - intersectionPoint; // subtract intPoint from camera's position (origin) and find w_0
+    Vector3f intersectionPoint = ray.origin + (ray.direction * intersection.t);
+    // subtract intPoint from camera's position (origin) and find the vector that goes to eye
+    Vector3f normalizedEyeVector = (ray.origin - intersectionPoint).normalize(); // w_0
 
     // For each light i
     for (int i = 0; i < scene->lights.size(); ++i) {
-        Vector3f lightDirection = (scene->lights[i]->position - intersectionPoint).normalize(); // normalized light direction
+        Vector3f lightDirection = (scene->lights[i]->position - intersectionPoint);
+        Vector3f normalizedLightDirection = lightDirection.normalize();
 
-        // Generate the shadow ray s from intersection point to i
+        // Cast the shadow ray s from intersection point to i
         Ray shadowRay;
-        Vector3f intOffset = scene->shadowRayEps * lightDirection;
+        Vector3f intOffset = normalizedLightDirection * scene->shadowRayEps; // moving intPoint a bit further to avoid fp precision errors
         shadowRay.origin = intersectionPoint + intOffset;
-        shadowRay.direction = lightDirection;
+        shadowRay.direction = normalizedLightDirection;
 
         // Intersect s with all objects again to check if there is any obj between the light source and point
         IntersectionData shadowIntersection = intersectRay(shadowRay, scene->objects);
 
-        // If there is an intersection continue -- point is in shadow -- no contribution from this light
-        if (shadowIntersection.t == INFINITY)
-            continue;
-        else {
-            // Else calculate diffuse and specular shading from this light source and add them to the pixelColor
-            // -- there is contribution from this light source -- point is not in shadow
+        if (shadowIntersection.t >= lightDirection.length()) {
+            // If there is not an intersection between the light source and point
+            // Then there is contribution from this light source -- point is not in shadow
 
+            /* Calculate diffuse and specular shading from this light source and add them to the pixelColor */
 
-            // computeDiffuse
-            Color diffuseContribution = computeDiffuse(material, ); // lightdirection w/o normalization!!
+            // Compute irradiance of light source i on intersection point
+            Vector3f irradiance = scene->lights[i]->computeLightContribution(intersectionPoint);
+
+            // Compute Diffuse
+            Vector3f diffuseContribution = computeDiffuse(intersectionMaterial, intersection.normal,
+                                                       normalizedLightDirection, irradiance);
             pixelColor += diffuseContribution;
 
-            // computeSpecular
+            // Compute Specular
+            Vector3f normalizedHalfVector = (normalizedLightDirection + normalizedEyeVector).normalize();
+            Vector3f specularContribution = computeSpecular(intersectionMaterial, intersection.normal,
+                                                         normalizedLightDirection, irradiance, normalizedHalfVector);
             pixelColor += specularContribution;
-
+        }
+        else {
+            // Else there is an intersection continue -- point is in shadow -- no contribution from this light
+            continue;
         }
     }
 
-    // If object has a ref. coeff. then Recursively track the ray acc. to maxRecDepth and calculate the reflectance contribution and finally add all of them to pixelColor
+    // TODO: Handle reflectance of pixel
 
+    // Check if the material of intersected object has a nonzero MirrorReflectance value
+    // Then Bounce primary ray until no intersection or maxRecDepth (count is initially zero)
+
+    if ((intersectionMaterial->mirrorRef.x > 0 || intersectionMaterial->mirrorRef.y > 0 ||
+    intersectionMaterial->mirrorRef.z > 0) && remainingRecursion > 0) {
+
+        // Calculate reflected ray's direction using w_r = -w_0 + 2*n*cosTheta => cosTheta = n.w_0
+        // Also move set its origin as intersectionPoint which is moved a bit further by shadowRayEps
+        Ray reflectedRay;
+        float cosTheta = dotProduct(intersection.normal, ray.direction);
+        reflectedRay.direction = (ray.direction * -1) + intersection.normal * 2 * cosTheta;
+        reflectedRay.origin = intersectionPoint + (reflectedRay.direction * scene->shadowRayEps);
+
+        // Again Calculate the nearest intersection of reflected Ray
+        IntersectionData reflectedIntersection = intersectRay(reflectedRay, scene->objects);
+
+        if (reflectedIntersection.t != INF) { // means that ray hit an object
+            Vector3f reflectedRadiance = computeRadiance(reflectedRay, reflectedIntersection, scene, remainingRecursion-1);
+
+            reflectedRadiance.x *= intersectionMaterial->mirrorRef.x;
+            reflectedRadiance.y *= intersectionMaterial->mirrorRef.y;
+            reflectedRadiance.z *= intersectionMaterial->mirrorRef.z;
+            pixelColor += reflectedRadiance;
+        }
+//        else { // no intersection, just set the pixel's color to background color
+//            return scene->backgroundColor;
+//        }
+    }
+
+    // Dont forget to clamp the resulting pixelColor
+    pixelColor.r = min(max(0.0f, pixelColor.r), 255.0f);
+    pixelColor.g = min(max(0.0f, pixelColor.g), 255.0f);
+    pixelColor.b = min(max(0.0f, pixelColor.b), 255.0f);
     return pixelColor;
 }
 
@@ -90,13 +163,16 @@ Color renderPixel(int row, int col, Scene * scene, int camIndex) {
     // Calculate nearest intersection
     IntersectionData intersection = intersectRay(primRay, scene->objects);
 
-    if (intersection.t != INFINITY) { // means that ray hit an object
-        return calculateRadiance(primRay, intersection, scene);
+    if (intersection.t != INF) { // means that ray hit an object
+        Vector3f pxColor = computeRadiance(primRay, intersection, scene, scene->maxRecursionDepth);
+        return {static_cast<unsigned char>(pxColor.r),
+                static_cast<unsigned char>(pxColor.g),
+                static_cast<unsigned char>(pxColor.b)};
     }
     else { // no intersection, just set the pixel's color to background color
-        return { static_cast<unsigned char>(scene->backgroundColor.r),
-                 static_cast<unsigned char>(scene->backgroundColor.g),
-                 static_cast<unsigned char>(scene->backgroundColor.b)};
+        return {static_cast<unsigned char>(scene->backgroundColor.r),
+                static_cast<unsigned char>(scene->backgroundColor.g),
+                static_cast<unsigned char>(scene->backgroundColor.b)};
     }
 }
 
@@ -120,15 +196,14 @@ void rayTracing(Image * image, Scene * scene, int camIndex) {
 void Scene::renderScene(void)
 {
     /**
-     * TODO
      Ray trace for each camera x:
         Create an Image instance (according to ImagePlane values of camera x)
             For each pixel i in Image:
                 Calculate primary ray from Camera x that goes through pixel i
                 Calculate the nearest intersection point calling Shape's intersect with calculated primary ray
+                    - Cast shadow rays to each light source from calculated intersection point
+                    - Calculate Basic Illumination Model of Material Shading properties Diffuse, Ambient, Specular
                     - Recursively track the ray acc. to maxRecDepth
-                    - Generate shadow rays to each light source from calculated intersection point (using Light's computeLightCont ?)
-                        ? - Basic Illumination Model of Material properties Diffuse, Ambient, Specular ?
                 Compute rgb value of pixel i according to results and fill it in Image instance
          Call save image and save the image
      */
