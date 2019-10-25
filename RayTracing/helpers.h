@@ -6,19 +6,17 @@
 
 inline float dotProduct(const Vector3f & first, const Vector3f & second)
 {
-	return (first.x * second.x + first.y * second.y + first.z * second.z);
+	return ((first.x * second.x) + (first.y * second.y) + (first.z * second.z));
 }
 
 
 inline Vector3f crossProduct(const Vector3f & first, const Vector3f & second)
 {
-    // TODO: calculating determinant ?
+    Vector3f res;
+    res.x = (first.y*second.z) - (first.z*second.y);
+    res.y = (first.z*second.x) - (first.x*second.z);
+    res.z = (first.x*second.y) - (first.y*second.x);
 
-	Vector3f res;
-    res.y = first.z*second.x - first.x*second.z;
-    res.x = first.y*second.z - first.z*second.y;
-    res.z = first.x*second.y - first.y*second.x;
-	
     return res;
 }
 

@@ -30,16 +30,15 @@ Ray Camera::getPrimaryRay(int row, int col) const
 
     Vector3f origin = this->pos; // e
     Vector3f imageCenter = origin + (this->gaze * this->imgPlane.distance); // m
-    Vector3f topLeft = imageCenter + (this->right * this->imgPlane.left) + (this->up * this->imgPlane.top ); // q
+    Vector3f topLeft = imageCenter + (this->right * this->imgPlane.left) + (this->up * this->imgPlane.top); // q
     float i = (this->imgPlane.right - this->imgPlane.left) * (row + 0.5) / this->imgPlane.nx; // s_u
     float j = (this->imgPlane.top - this->imgPlane.bottom) * (col + 0.5) / this->imgPlane.ny; // s_v
 
-    // {i, j, -this->imgPlane.distance}; // or z = this->gaze.z?
-
+    Vector3f targetPoint = topLeft + (this->right * i) - (this->up * j); // s
     // We have to normalize the direction to the length of 1 so it doesn't skew our results
-    Vector3f rayDirection = (topLeft + (this->right * i) - (this->up * j) - origin).normalize(); // d = s - e
+    Vector3f rayDirection = normalize(targetPoint - origin); // d = s - e
 
-    Ray * ray = new Ray(this->pos, rayDirection);
-    return *ray;
+    Ray ray = Ray(this->pos, rayDirection);
+    return ray;
 }
 
