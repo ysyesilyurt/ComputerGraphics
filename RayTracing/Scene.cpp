@@ -7,9 +7,14 @@
 #include "Image.h"
 #include "helpers.h"
 #include <limits>
+#include <thread>
+#include <mutex>
 
 using namespace tinyxml2;
 const float INF = numeric_limits<float>::max();
+int lastRow;
+mutex rowMutex;
+
 
 IntersectionData intersectRay(const Ray & ray, const vector<Shape *> & objects) {
 
@@ -17,8 +22,8 @@ IntersectionData intersectRay(const Ray & ray, const vector<Shape *> & objects) 
 
     IntersectionData minIntersection = {INF, {}, -1};
     // For each object in the scene Intersect ray with all the shapes in scene and get the nearest one
-    for (int i = 0; i < objects.size(); ++i) {
-        IntersectionData tempIntersection = objects[i]->intersect(ray); // calling object's own intersect method
+    for (auto object : objects) {
+        IntersectionData tempIntersection = object->intersect(ray); // calling object's own intersect method
         if (tempIntersection.t != INF) {
             if (minIntersection.t > tempIntersection.t) {
                 minIntersection = tempIntersection;
@@ -127,7 +132,7 @@ Vector3f computeRadiance(const Ray & ray, const IntersectionData & intersection,
         // Also move set its origin as intersectionPoint which is moved a bit further by shadowRayEps
         Ray reflectedRay;
         float cosTheta = dotProduct(intersection.normal, ray.direction);
-        reflectedRay.direction = ((ray.direction * -1) + (intersection.normal * (2 * cosTheta))) * -1; // todo: why do we multiply with -1 at the end?
+        reflectedRay.direction = ((ray.direction * -1) + (intersection.normal * (2 * cosTheta))) * -1;
         reflectedRay.origin = intersectionPoint + (reflectedRay.direction * scene->shadowRayEps);
 
         // Again Calculate the nearest intersection of reflected Ray
@@ -172,16 +177,27 @@ Color renderPixel(int row, int col, Scene * scene, int camIndex) {
     }
 }
 
-void rayTracing(Image * image, Scene * scene, int camIndex) {
+void renderRegion(Image * image, const int rowNumber, Scene * scene, int camIndex) {
+    // For each pixel in given Row
+    for (int j = 0; j < scene->cameras[camIndex]->imgPlane.nx; ++j) {
+        Color colorOfPixel = renderPixel(rowNumber, j, scene, camIndex);
+        image->setPixelValue(rowNumber, j, colorOfPixel);
+    }
+}
 
-    // TODO: After basic functionality is implemented -- implement below section such that all threads get 1 row and handle it
+int getTask() {
+    lock_guard<mutex> guard(rowMutex);
+    --lastRow;
+    return lastRow;
+}
 
-    // For each pixel in Image
-    for (int i = 0; i < scene->cameras[camIndex]->imgPlane.nx; ++i) {
-        for (int j = 0; j < scene->cameras[camIndex]->imgPlane.ny; ++j) {
-            Color colorOfPixel = renderPixel(i, j, scene, camIndex);
-            image->setPixelValue(i, j, colorOfPixel);
-        }
+void execute(Image * image, Scene * scene, int camIndex, int thrId) {
+    while (true) {
+        int rowNum = getTask();
+        if (rowNum < 0)
+            break;
+//        cout << "Assigning thread " << thrId << " row " << rowNum << '\n';
+        renderRegion(image, rowNum, scene, camIndex);
     }
 }
 
@@ -203,10 +219,23 @@ void Scene::renderScene(void)
                 Compute rgb value of pixel i according to results and fill it in Image instance
          Call save image and save the image
      */
-
+    const unsigned int numOfCores = thread::hardware_concurrency();
     for (int x = 0; x < cameras.size(); ++x) {
-        Image * image = new Image(cameras[x]->imgPlane.nx,cameras[x]->imgPlane.ny);
-        rayTracing(image, this, x);
+        auto * image = new Image(cameras[x]->imgPlane.nx,cameras[x]->imgPlane.ny);
+        lastRow = cameras[x]->imgPlane.nx;
+        if (!numOfCores) {
+            execute(image, this, x, 0);
+        }
+        else {
+            auto * threads = new thread[numOfCores];
+            for (int i = 0; i < numOfCores; i++) {
+//                cout << "Created thread " << i << '\n';
+                threads[i] = thread(execute, image, this, x, i);
+            }
+            for (int i = 0; i < numOfCores; i++)
+                threads[i].join();
+            delete[] threads;
+        }
         image->saveImage(cameras[x]->imageName);
     }
 }

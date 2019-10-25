@@ -1,5 +1,4 @@
 #include "Light.h"
-#include "Image.h"
 #include "helpers.h"
 
 /* Constructor. Implemented for you. */
@@ -18,6 +17,7 @@ Vector3f PointLight::computeLightContribution(const Vector3f& p) {
 	 *
 	 * E(d) = I / d^2
 	 */
+
 	Vector3f normalizedLightDirection = this->position - p;
     float lightDistance = vectorLength(normalizedLightDirection);
     Vector3f irradianceContribution = this->intensity / (lightDistance * lightDistance);
