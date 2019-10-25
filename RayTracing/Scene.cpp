@@ -209,8 +209,8 @@ void Scene::renderScene(void)
      */
 
     for (int x = 0; x < cameras.size(); ++x) {
-        Image * image = new Image(cameras[x]->imgPlane.left - cameras[x]->imgPlane.right,
-                                  cameras[x]->imgPlane.top - cameras[x]->imgPlane.bottom);
+        Image * image = new Image(abs(cameras[x]->imgPlane.left - cameras[x]->imgPlane.right),
+                                  abs(cameras[x]->imgPlane.top - cameras[x]->imgPlane.bottom));
 
         image->data = new Color*[cameras[x]->imgPlane.nx];
         for(int y = 0; y < cameras[x]->imgPlane.nx; ++y)
@@ -221,7 +221,7 @@ void Scene::renderScene(void)
     }
 }
 
-// Parses XML file. 
+// Parses XML file.
 Scene::Scene(const char *xmlPath)
 {
     const char *str;

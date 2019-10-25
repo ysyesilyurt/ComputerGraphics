@@ -28,7 +28,7 @@ inline float determinant(
             float x_20,float x_21,float x_22)
 {
     return
-        (x_00 * ((x_11 * x_22) - (x_12 * x_21))) +
+        (x_00 * ((x_11 * x_22) - (x_12 * x_21))) -
         (x_01 * ((x_12 * x_20) - (x_10 * x_22))) +
         (x_02 * ((x_10 * x_21) - (x_20 * x_11)));
 }

@@ -1,7 +1,7 @@
 #include "Image.h"
 
 Image::Image(int width, int height)
-    : width(width), height(height)
+        : width(width), height(height)
 {
     data = new Color* [height];
 
@@ -22,12 +22,12 @@ void Image::setPixelValue(int col, int row, const Color& color)
 /* Takes the image name as a file and saves it as a ppm file. */
 void Image::saveImage(const char *imageName) const
 {
-	FILE *output;
+    FILE *output;
 
-	output = fopen(imageName, "w");
-	fprintf(output, "P3\n");
-	fprintf(output, "%d %d\n", width, height);
-	fprintf(output, "255\n");
+    output = fopen(imageName, "w");
+    fprintf(output, "P3\n");
+    fprintf(output, "%d %d\n", width, height);
+    fprintf(output, "255\n");
 
 	for(int y = 0 ; y < height; y++)
 	{

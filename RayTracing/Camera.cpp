@@ -9,13 +9,13 @@ Camera::Camera(int id,                      // Id of the camera
                const Vector3f& up,          // Camera up direction
                const ImagePlane& imgPlane)  // Image plane parameters
 {
-	 this->id = id;
-	 strncpy(this->imageName, imageName, 32);
-	 this->imgPlane = imgPlane;
-	 this->pos = pos;
-	 this->gaze = gaze;
-	 this->up = up;
-	 this->right = crossProduct(gaze, up);
+    this->id = id;
+    strncpy(this->imageName, imageName, 32);
+    this->imgPlane = imgPlane;
+    this->pos = pos;
+    this->gaze = gaze;
+    this->right = up * -1;
+    this->up = crossProduct(gaze, right);
 }
 
 /* Takes coordinate of an image pixel as row and col, and
