@@ -100,15 +100,6 @@ IntersectionData Triangle::intersect(const Ray & ray) const
         return {t, normalize(crossProduct(p3-p2, p1-p2)), matIndex};
 
     return nullIntersect;
-
-// TODO: below gives the black line between faces
-//    if(     t < pScene->intTestEps ||
-//            (beta + gamma) - 1 > pScene->intTestEps ||
-//            beta < pScene->intTestEps ||
-//            gamma < pScene->intTestEps
-//            ) return nullIntersect;
-//
-//    return {t, normalize(crossProduct(p3-p2, p1-p2)), matIndex};
 }
 
 Mesh::Mesh()

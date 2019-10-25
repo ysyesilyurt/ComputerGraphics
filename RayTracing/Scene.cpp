@@ -91,7 +91,6 @@ Vector3f computeRadiance(const Ray & ray, const IntersectionData & intersection,
 
         // Intersect s with all objects again to check if there is any obj between the light source and point
         IntersectionData shadowIntersection = intersectRay(shadowRay, scene->objects);
-
         if (shadowIntersection.t >= vectorLength(lightDirection)) {
             // If there is not an intersection between the light source and point
             // Then there is contribution from this light source -- point is not in shadow
@@ -162,7 +161,6 @@ Color renderPixel(int row, int col, Scene * scene, int camIndex) {
 
     if (intersection.t != INF) { // means that ray hit an object
         Vector3f pxColor = computeRadiance(primRay, intersection, scene, scene->maxRecursionDepth);
-//        Vector3f pxColor = {255, 0, 0}; // TODO: Use this for intersection test, Just it comment out and make ALL INTERSECTED ARE AS RED
         return {static_cast<unsigned char>(pxColor.r),
                 static_cast<unsigned char>(pxColor.g),
                 static_cast<unsigned char>(pxColor.b)};
