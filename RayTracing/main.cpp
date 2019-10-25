@@ -1,5 +1,5 @@
-#include "defs.h"
 #include "Scene.h"
+#include "Camera.h"
 
 Scene *pScene; // definition of the global scene variable (declared in defs.h)
 

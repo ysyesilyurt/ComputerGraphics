@@ -1,4 +1,6 @@
 #include "Light.h"
+#include "Image.h"
+#include "helpers.h"
 
 /* Constructor. Implemented for you. */
 PointLight::PointLight(const Vector3f & position, const Vector3f & intensity)
@@ -8,18 +10,17 @@ PointLight::PointLight(const Vector3f & position, const Vector3f & intensity)
 
 // Compute the contribution of light at point p using the
 // inverse square law formula
-Vector3f PointLight::computeLightContribution(const Vector3f& p)
-{
-	/***********************************************
-     *                                             *
-	 * TODO: Implement this function               *
-     *                                             *
-     ***********************************************
+Vector3f PointLight::computeLightContribution(const Vector3f& p) {
 
-     Compute light amount using:
-        shadow ray (light position and point)
-        surface normal
-        intensity of source
-    --inverse square law formula--
+	/*
+	 * Irradiance on a point due to a light source is computed here
+	 * using inverse square law formula
+	 *
+	 * E(d) = I / d^2
 	 */
+
+	Vector3f normalizedLightDirection = this->position - p;
+    float lightDistance = vectorLength(normalizedLightDirection);
+    Vector3f irradianceContribution = this->intensity / (lightDistance * lightDistance);
+    return irradianceContribution;
 }
