@@ -1,0 +1,8 @@
+A Concurrent implementation for Ray Tracing Algorithm to Render Scenes.
+
+To make: make all
+To test: chmod +x runInputs.py && ./runInputs.py (It will generate its outputs under outputs dir)
+Sample inputs: inputs
+Sample outputs: outputs/sample_outputs
+
+Authors: ysyesilyurt & gokhansan
