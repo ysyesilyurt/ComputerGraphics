@@ -1,12 +1,10 @@
 #include "Shape.h"
 #include "Scene.h"
 #include "helpers.h"
-#include <cstdio>
 #include <limits>
 
 const float INF = numeric_limits<float>::max();
 
-#define verySmall 1e-6
 #define nullIntersect {INF,{},-1}
 
 Shape::Shape(void)
@@ -29,7 +27,7 @@ Sphere::Sphere(int id, int matIndex, int cIndex, float R)
     this->radiusSquare = R*R;
 }
 
-/* Sphere-ray intersection routine. You will implement this. 
+/* Sphere-ray intersection routine. You will implement this.
 Note that IntersectionData structure should hold the information related to the intersection point, e.g., coordinate of that point, normal at that point etp3.
 You should to declare the variables in IntersectionData structure you think you will need. It is in defs.h file. */
 IntersectionData Sphere::intersect(const Ray & ray) const
@@ -37,19 +35,20 @@ IntersectionData Sphere::intersect(const Ray & ray) const
     // float a = 1;  d^2
     float b = dotProduct(ray.direction, ray.origin - pScene->vertices[this->centerIndex-1]); // d.(o-c)
     float c = dotProduct(ray.origin - pScene->vertices[this->centerIndex-1],
-            ray.origin - pScene->vertices[this->centerIndex-1]) - this->radiusSquare * this->radiusSquare; // (o-c)^2 - R^2
+            ray.origin - pScene->vertices[this->centerIndex-1]) - this->radiusSquare; // (o-c)^2 - R^2
 
-    float discriminant = b*b - c;
+    float discriminant = (b*b) - c;
 
-    if(discriminant < verySmall)
+    if(discriminant < pScene->intTestEps)
         return nullIntersect;
 
-    float t = -b - sqrt(discriminant);
+    float t1 = -b - sqrt(discriminant);
+    float t2 = -b + sqrt(discriminant);
 
-    if(t < verySmall)
+    if(t1 < pScene->intTestEps && t2 < pScene->intTestEps)
         return nullIntersect;
 
-    return {t, ((ray.origin +  ray.direction * t) - pScene->vertices[this->centerIndex-1]).normalize(), matIndex};
+    return {t1, normalize(((ray.origin +  ray.direction * t1) - pScene->vertices[this->centerIndex-1])), matIndex};
 }
 
 Triangle::Triangle(void)
@@ -78,7 +77,7 @@ IntersectionData Triangle::intersect(const Ray & ray) const
             p1.y - p2.y, p1.y - p3.y, ray.direction.y,
             p1.z - p2.z, p1.z - p3.z, ray.direction.z);
 
-    if(det < verySmall && det > -verySmall)
+    if(det < pScene->intTestEps && det > -pScene->intTestEps)
         return nullIntersect;
 
     float beta = determinant(
@@ -97,14 +96,10 @@ IntersectionData Triangle::intersect(const Ray & ray) const
             p1.z - p2.z, p1.z - p3.z, p1.z - ray.origin.z)
               / det;
 
-    if(     t < verySmall ||
-            (beta + gamma) - 1 > verySmall ||
-            beta < verySmall ||
-            gamma < verySmall
-        ) return nullIntersect;
+    if (t > 0 && beta + gamma <= 1 && 0 <= beta && 0 <= gamma)
+        return {t, normalize(crossProduct(p3-p2, p1-p2)), matIndex};
 
-    return {t, crossProduct(p2-p1, p3-p1).normalize(), matIndex};
-
+    return nullIntersect;
 }
 
 Mesh::Mesh()
@@ -114,10 +109,7 @@ Mesh::Mesh()
 Mesh::Mesh(int id, int matIndex, const vector<Triangle>& faces)
     : Shape(id, matIndex)
 {
-    int size = faces.size();
     this->triangles = faces;
-    // TODO: this guy could be a lot faster but less safe           @@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-    //  just make triangles a pointer and assign it to address of faces
 }
 
 /* Mesh-ray intersection routine. You will implement this. 

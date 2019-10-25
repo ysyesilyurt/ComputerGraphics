@@ -58,32 +58,26 @@ typedef struct Vector3f
         return *this;
     }
 
+    inline Vector3f & operator*=(float a) {
+        x *= a;
+        y *= a;
+        z *= a;
+        return *this;
+    }
+
+    inline Vector3f & operator/=(float a) {
+        x /= a;
+        y /= a;
+        z /= a;
+        return *this;
+    }
+
     inline bool operator==(Vector3f a) const {
        return (a.x == x && a.y == y && a.z == z);
     }
 
     inline bool operator!=(Vector3f a) const {
        return (a.x != x || a.y != y || a.z != z);
-    }
-
-    inline float length() const {
-        return std::sqrt(x*x + y*y + z*z);
-    }
-
-    inline Vector3f& normalize() {
-	    // This function normalizes this and returns it
-	    // So can be used with assignments such as a = abc.normalize();
-        float len = length();
-        if (len == 0.0f) { // len is zero then return zero vector
-            x = 0;
-            y = 0;
-            z = 0;
-            return *this;
-        }
-        x /= len;
-        y /= len;
-        z /= len;
-        return *this;
     }
 } Vector3f;
 
