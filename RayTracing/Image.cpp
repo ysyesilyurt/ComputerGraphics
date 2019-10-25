@@ -29,9 +29,9 @@ void Image::saveImage(const char *imageName) const
     fprintf(output, "%d %d\n", width, height);
     fprintf(output, "255\n");
 
-	for(int y = 0 ; y < height; y++)
-	{
-		for(int x = 0 ; x < width; x++)
+    for(int y = 0 ; y < height; y++)
+    {
+        for(int x = 0 ; x < width; x++)
         {
             for (int c = 0; c < 3; ++c)
             {
@@ -39,8 +39,8 @@ void Image::saveImage(const char *imageName) const
             }
         }
 
-		fprintf(output, "\n");
-	}
+        fprintf(output, "\n");
+    }
 
-	fclose(output);
+    fclose(output);
 }

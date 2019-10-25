@@ -14,16 +14,16 @@ Camera::Camera(int id,                      // Id of the camera
     this->imgPlane = imgPlane;
     this->pos = pos;
     this->gaze = gaze;
-    this->right = up * -1;
-    this->up = crossProduct(gaze, right);
+    this->up = up;
+    this->right = crossProduct(gaze, up);
 }
 
 /* Takes coordinate of an image pixel as row and col, and
- * returns the ray going through that pixel. 
+ * returns the ray going through that pixel.
  */
 Ray Camera::getPrimaryRay(int row, int col) const
 {
-	/* m = e + (-w) * distance */
+    /* m = e + (-w) * distance */
     /* q = m + l * u + t * v */
     /* s = q + s_u * u - s_v * v */
     /* d = s - e */
@@ -41,4 +41,3 @@ Ray Camera::getPrimaryRay(int row, int col) const
     Ray ray = Ray(this->pos, rayDirection);
     return ray;
 }
-

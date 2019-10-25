@@ -11,44 +11,44 @@ Use x, y, z for coordinate computations, and use r, g, b for color computations.
 Note that you do not have to use this one if you use any vector computation library like Eigen. */
 typedef struct Vector3f
 {
-	union 
-	{
-		float x;
-		float r;
-	};
-	union
-	{
-		float y;
-		float g;
-	};
-	union
-	{
-		float z;
-		float b;
-	};
+    union
+    {
+        float x;
+        float r;
+    };
+    union
+    {
+        float y;
+        float g;
+    };
+    union
+    {
+        float z;
+        float b;
+    };
 
-	inline Vector3f operator+(Vector3f a) const {
+    inline Vector3f operator+(Vector3f a) const {
         return {x+a.x, y+a.y, z+a.z};
     }
 
-	inline Vector3f operator-(Vector3f a) const {
-		return {x-a.x, y-a.y, z-a.z};
+    inline Vector3f operator-(Vector3f a) const {
+        return {x-a.x, y-a.y, z-a.z};
     }
 
-	inline Vector3f operator*(float a) const {
-		return {x*a, y*a, z*a};
+    inline Vector3f operator*(float a) const {
+        return {x*a, y*a, z*a};
     }
 
 
-	inline Vector3f operator/(float a) const {
-		return {x/a, y/a, z/a};
+    inline Vector3f operator/(float a) const {
+        return {x/a, y/a, z/a};
     }
 
-	inline Vector3f& operator=(Vector3f a) {
-		x = a.x;
-		y = a.y;
-		z = a.z;
-		return *this;
+    inline Vector3f& operator=(Vector3f a) {
+        x = a.x;
+        y = a.y;
+        z = a.z;
+        return *this;
     }
 
     inline Vector3f& operator+=(Vector3f a) {
@@ -73,11 +73,11 @@ typedef struct Vector3f
     }
 
     inline bool operator==(Vector3f a) const {
-       return (a.x == x && a.y == y && a.z == z);
+        return (a.x == x && a.y == y && a.z == z);
     }
 
     inline bool operator!=(Vector3f a) const {
-       return (a.x != x || a.y != y || a.z != z);
+        return (a.x != x || a.y != y || a.z != z);
     }
 } Vector3f;
 
@@ -88,8 +88,8 @@ Think about the variables you will need for this purpose and declare them here i
 typedef struct IntersectionData
 {
 
-	float t;
-	Vector3f normal;
+    float t;
+    Vector3f normal;
     int materialId;
 
 } IntersectionData;

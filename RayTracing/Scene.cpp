@@ -29,7 +29,7 @@ IntersectionData intersectRay(const Ray & ray, const vector<Shape *> & objects) 
 }
 
 Vector3f computeSpecular(const Material * material, const Vector3f & normalVector,
-        const Vector3f & irradiance, const Vector3f & halfVector) {
+                         const Vector3f & irradiance, const Vector3f & halfVector) {
 
     // (cosAlpha)^ns
     float phongExponentCosAlpha = pow(max(0.0f, dotProduct(normalVector, halfVector)), material->phongExp);
@@ -44,7 +44,7 @@ Vector3f computeSpecular(const Material * material, const Vector3f & normalVecto
 }
 
 Vector3f computeDiffuse(const Material * material, const Vector3f & normalVector,
-        const Vector3f & lightDirection, const Vector3f & irradiance) {
+                        const Vector3f & lightDirection, const Vector3f & irradiance) {
 
     // cosTheta
     float cosTheta = max(0.0f, dotProduct(normalize(lightDirection), normalVector));
@@ -102,13 +102,13 @@ Vector3f computeRadiance(const Ray & ray, const IntersectionData & intersection,
 
             // Compute Diffuse
             Vector3f diffuseContribution = computeDiffuse(intersectionMaterial, intersection.normal,
-                                                       lightDirection, irradiance);
+                                                          lightDirection, irradiance);
             pixelColor += diffuseContribution;
 
             // Compute Specular
             Vector3f normalizedHalfVector = normalize(normalizedLightDirection + normalize(eyeVector));
             Vector3f specularContribution = computeSpecular(intersectionMaterial, intersection.normal,
-                    irradiance, normalizedHalfVector);
+                                                            irradiance, normalizedHalfVector);
             pixelColor += specularContribution;
         }
         else {
@@ -121,7 +121,7 @@ Vector3f computeRadiance(const Ray & ray, const IntersectionData & intersection,
     // Then Bounce primary ray until no intersection or maxRecDepth (count is initially zero)
 
     if ((intersectionMaterial->mirrorRef.x > 0 || intersectionMaterial->mirrorRef.y > 0 ||
-    intersectionMaterial->mirrorRef.z > 0) && remainingRecursion > 0) {
+         intersectionMaterial->mirrorRef.z > 0) && remainingRecursion > 0) {
 
         // Calculate reflected ray's direction using w_r = -w_0 + 2*n*cosTheta => cosTheta = n.w_0
         // Also move set its origin as intersectionPoint which is moved a bit further by shadowRayEps
@@ -135,7 +135,7 @@ Vector3f computeRadiance(const Ray & ray, const IntersectionData & intersection,
 
         if (reflectedIntersection.t != INF) { // means that ray hit an object
             Vector3f reflectedRadiance = computeRadiance(reflectedRay, reflectedIntersection, scene,
-                    remainingRecursion-1);
+                                                         remainingRecursion-1);
 
             reflectedRadiance.x *= intersectionMaterial->mirrorRef.x;
             reflectedRadiance.y *= intersectionMaterial->mirrorRef.y;
@@ -205,17 +205,7 @@ void Scene::renderScene(void)
      */
 
     for (int x = 0; x < cameras.size(); ++x) {
-<<<<<<< HEAD
-        Image * image = new Image(abs(cameras[x]->imgPlane.left - cameras[x]->imgPlane.right),
-                                  abs(cameras[x]->imgPlane.top - cameras[x]->imgPlane.bottom));
-
-        image->data = new Color*[cameras[x]->imgPlane.nx];
-        for(int y = 0; y < cameras[x]->imgPlane.nx; ++y)
-            image->data[y] = new Color[cameras[x]->imgPlane.ny];
-
-=======
         Image * image = new Image(cameras[x]->imgPlane.nx,cameras[x]->imgPlane.ny);
->>>>>>> 7562923074aa679c8e20bbc1044202d037f5ab4c
         rayTracing(image, this, x);
         image->saveImage(cameras[x]->imageName);
     }
@@ -473,4 +463,3 @@ Scene::Scene(const char *xmlPath)
         pLight = pLight->NextSiblingElement("PointLight");
     }
 }
-
