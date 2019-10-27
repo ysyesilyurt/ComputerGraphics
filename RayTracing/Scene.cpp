@@ -156,10 +156,10 @@ Vector3f computeRadiance(const Ray & ray, const IntersectionData & intersection,
     return pixelColor;
 }
 
-Color renderPixel(int row, int col, Scene * scene, int camIndex) {
+Color renderPixel(int col, int row, Scene * scene, int camIndex) {
 
     // Calculate primary ray from Camera x that goes through pixel
-    Ray primRay = scene->cameras[camIndex]->getPrimaryRay(row, col);
+    Ray primRay = scene->cameras[camIndex]->getPrimaryRay(col, row);
 
     // Calculate nearest intersection
     IntersectionData intersection = intersectRay(primRay, scene->objects);
@@ -177,11 +177,11 @@ Color renderPixel(int row, int col, Scene * scene, int camIndex) {
     }
 }
 
-void renderRegion(Image * image, const int rowNumber, Scene * scene, int camIndex) {
+void renderRow(Image * image, const int row, Scene * scene, int camIndex) {
     // For each pixel in given Row
-    for (int j = 0; j < scene->cameras[camIndex]->imgPlane.nx; ++j) {
-        Color colorOfPixel = renderPixel(rowNumber, j, scene, camIndex);
-        image->setPixelValue(rowNumber, j, colorOfPixel);
+    for (int col = 0; col < scene->cameras[camIndex]->imgPlane.nx; ++col) {
+        Color colorOfPixel = renderPixel(col, row, scene, camIndex);
+        image->setPixelValue(col, row, colorOfPixel);
     }
 }
 
@@ -191,13 +191,12 @@ int getTask() {
     return lastRow;
 }
 
-void execute(Image * image, Scene * scene, int camIndex, int thrId) {
+void execute(Image * image, Scene * scene, int camIndex) {
     while (true) {
         int rowNum = getTask();
         if (rowNum < 0)
             break;
-//        cout << "Assigning thread " << thrId << " row " << rowNum << '\n';
-        renderRegion(image, rowNum, scene, camIndex);
+        renderRow(image, rowNum, scene, camIndex);
     }
 }
 
@@ -222,15 +221,13 @@ void Scene::renderScene(void)
     const unsigned int numOfCores = thread::hardware_concurrency();
     for (int x = 0; x < cameras.size(); ++x) {
         auto * image = new Image(cameras[x]->imgPlane.nx,cameras[x]->imgPlane.ny);
-        lastRow = cameras[x]->imgPlane.nx;
-        if (!numOfCores) {
-            execute(image, this, x, 0);
-        }
+        lastRow = cameras[x]->imgPlane.ny;
+        if (!numOfCores)
+            execute(image, this, x);
         else {
             auto * threads = new thread[numOfCores];
             for (int i = 0; i < numOfCores; i++) {
-//                cout << "Created thread " << i << '\n';
-                threads[i] = thread(execute, image, this, x, i);
+                threads[i] = thread(execute, image, this, x);
             }
             for (int i = 0; i < numOfCores; i++)
                 threads[i].join();

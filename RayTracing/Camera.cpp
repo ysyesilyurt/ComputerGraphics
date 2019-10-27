@@ -21,7 +21,7 @@ Camera::Camera(int id,                      // Id of the camera
 /* Takes coordinate of an image pixel as row and col, and
  * returns the ray going through that pixel. 
  */
-Ray Camera::getPrimaryRay(int row, int col) const
+Ray Camera::getPrimaryRay(int col, int row) const
 {
 	/* m = e + (-w) * distance */
     /* q = m + l * u + t * v */
@@ -31,8 +31,8 @@ Ray Camera::getPrimaryRay(int row, int col) const
     Vector3f origin = this->pos; // e
     Vector3f imageCenter = origin + (this->gaze * this->imgPlane.distance); // m
     Vector3f topLeft = imageCenter + (this->right * this->imgPlane.left) + (this->up * this->imgPlane.top); // q
-    float i = (this->imgPlane.right - this->imgPlane.left) * (row + 0.5) / this->imgPlane.nx; // s_u
-    float j = (this->imgPlane.top - this->imgPlane.bottom) * (col + 0.5) / this->imgPlane.ny; // s_v
+    float i = (this->imgPlane.right - this->imgPlane.left) * (col + 0.5) / this->imgPlane.nx; // s_u
+    float j = (this->imgPlane.top - this->imgPlane.bottom) * (row + 0.5) / this->imgPlane.ny; // s_v
 
     Vector3f targetPoint = topLeft + (this->right * i) - (this->up * j); // s
     // We have to normalize the direction to the length of 1 so it doesn't skew our results
