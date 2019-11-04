@@ -48,7 +48,7 @@ IntersectionData Sphere::intersect(const Ray & ray) const
     if(t1 < pScene->intTestEps && t2 < pScene->intTestEps)
         return nullIntersect;
 
-    return {t1, normalize(((ray.origin +  ray.direction * t1) - pScene->vertices[this->centerIndex-1])), matIndex};
+    return {t1, normalize(((ray.origin +  ray.direction * t1) - pScene->vertices[this->centerIndex-1])) , matIndex};
 }
 
 Triangle::Triangle(void)
@@ -96,7 +96,7 @@ IntersectionData Triangle::intersect(const Ray & ray) const
             p1.z - p2.z, p1.z - p3.z, p1.z - ray.origin.z)
               / det;
 
-    if (t > 0 && beta + gamma <= 1 && 0 <= beta && 0 <= gamma)
+    if (t > pScene->intTestEps && beta + gamma <= 1 && 0 <= beta && 0 <= gamma)
         return {t, normalize(crossProduct(p3-p2, p1-p2)), matIndex};
 
     return nullIntersect;

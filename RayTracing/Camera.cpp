@@ -21,7 +21,7 @@ Camera::Camera(int id,                      // Id of the camera
 /* Takes coordinate of an image pixel as row and col, and
  * returns the ray going through that pixel. 
  */
-Ray Camera::getPrimaryRay(int col, int row) const
+Ray Camera::getPrimaryRay(int row, int col) const
 {
 	/* m = e + (-w) * distance */
     /* q = m + l * u + t * v */

@@ -35,32 +35,31 @@ IntersectionData intersectRay(const Ray & ray, const vector<Shape *> & objects) 
 
 Vector3f computeSpecular(const Material * material, const Vector3f & normalVector,
         const Vector3f & irradiance, const Vector3f & halfVector) {
-
     // (cosAlpha)^ns
     float phongExponentCosAlpha = pow(max(0.0f, dotProduct(normalVector, halfVector)), material->phongExp);
     // (cosAlpha)^ns * E(d)
-    Vector3f specularWithoutCoeffs = irradiance * phongExponentCosAlpha;
+    Vector3f specular = irradiance * phongExponentCosAlpha;
     // Multiplying with specular coeff
-    specularWithoutCoeffs.r *= material->specularRef.r;
-    specularWithoutCoeffs.g *= material->specularRef.g;
-    specularWithoutCoeffs.b *= material->specularRef.b;
+    specular.r *= material->specularRef.r;
+    specular.g *= material->specularRef.g;
+    specular.b *= material->specularRef.b;
 
-    return specularWithoutCoeffs;
+    return specular;
 }
 
 Vector3f computeDiffuse(const Material * material, const Vector3f & normalVector,
-        const Vector3f & lightDirection, const Vector3f & irradiance) {
+        const Vector3f & normalizedLightDirection, const Vector3f & irradiance) {
 
     // cosTheta
-    float cosTheta = max(0.0f, dotProduct(normalize(lightDirection), normalVector));
+    float cosTheta = max(0.0f, dotProduct(normalizedLightDirection, normalVector));
     // cosTheta * E(d)
-    Vector3f diffuseWithoutCoeffs = irradiance * cosTheta;
-    // Multiplying with diffuse coeff
-    diffuseWithoutCoeffs.r *= material->diffuseRef.r;
-    diffuseWithoutCoeffs.g *= material->diffuseRef.g;
-    diffuseWithoutCoeffs.b *= material->diffuseRef.b;
+    Vector3f diffuse = irradiance * cosTheta;
+    // Multiplying with kd
+    diffuse.r *= material->diffuseRef.r;
+    diffuse.g *= material->diffuseRef.g;
+    diffuse.b *= material->diffuseRef.b;
 
-    return diffuseWithoutCoeffs;
+    return diffuse;
 }
 
 Vector3f computeAmbient(const Material * material, const Vector3f & ambientLight) {
@@ -81,11 +80,12 @@ Vector3f computeRadiance(const Ray & ray, const IntersectionData & intersection,
     Vector3f intersectionPoint = ray.origin + (ray.direction * intersection.t);
     // subtract intPoint from camera's position (origin) and find the vector that goes to eye
     Vector3f eyeVector = ray.origin - intersectionPoint; // w_0
+    Vector3f normalizedEyeVector = normalize(eyeVector);
 
     // For each light i
     for (int i = 0; i < scene->lights.size(); ++i) {
 
-        Vector3f lightDirection = scene->lights[i]->position - intersectionPoint;
+        Vector3f lightDirection = scene->lights[i]->position - intersectionPoint; // w_i
         Vector3f normalizedLightDirection = normalize(lightDirection);
 
         // Cast the shadow ray s from intersection point to i
@@ -107,11 +107,11 @@ Vector3f computeRadiance(const Ray & ray, const IntersectionData & intersection,
 
             // Compute Diffuse
             Vector3f diffuseContribution = computeDiffuse(intersectionMaterial, intersection.normal,
-                                                       lightDirection, irradiance);
+                                                          normalizedLightDirection, irradiance);
             pixelColor += diffuseContribution;
 
             // Compute Specular
-            Vector3f normalizedHalfVector = normalize(normalizedLightDirection + normalize(eyeVector));
+            Vector3f normalizedHalfVector = normalize(normalizedLightDirection + normalizedEyeVector);
             Vector3f specularContribution = computeSpecular(intersectionMaterial, intersection.normal,
                     irradiance, normalizedHalfVector);
             pixelColor += specularContribution;
@@ -131,8 +131,12 @@ Vector3f computeRadiance(const Ray & ray, const IntersectionData & intersection,
         // Calculate reflected ray's direction using w_r = -w_0 + 2*n*cosTheta => cosTheta = n.w_0
         // Also move set its origin as intersectionPoint which is moved a bit further by shadowRayEps
         Ray reflectedRay;
-        float cosTheta = dotProduct(intersection.normal, ray.direction);
-        reflectedRay.direction = ((ray.direction * -1) + (intersection.normal * (2 * cosTheta))) * -1;
+//        float cosTheta = dotProduct(intersection.normal, ray.direction);
+//        reflectedRay.direction = ((ray.direction * -1) + (intersection.normal * (2 * cosTheta))) * -1; // W_0 is eyeVector -- could have used it instead of ray.direction and multiplying with -1 at the end
+//        reflectedRay.origin = intersectionPoint + (reflectedRay.direction * scene->shadowRayEps);
+
+        float cosTheta = dotProduct(intersection.normal, normalizedEyeVector); // w_0.n
+        reflectedRay.direction = (normalizedEyeVector * -1) + (intersection.normal * (2 * cosTheta)); // -w_0 + 2n.cosTheta
         reflectedRay.origin = intersectionPoint + (reflectedRay.direction * scene->shadowRayEps);
 
         // Again Calculate the nearest intersection of reflected Ray
@@ -159,7 +163,7 @@ Vector3f computeRadiance(const Ray & ray, const IntersectionData & intersection,
 Color renderPixel(int col, int row, Scene * scene, int camIndex) {
 
     // Calculate primary ray from Camera x that goes through pixel
-    Ray primRay = scene->cameras[camIndex]->getPrimaryRay(col, row);
+    Ray primRay = scene->cameras[camIndex]->getPrimaryRay(row, col);
 
     // Calculate nearest intersection
     IntersectionData intersection = intersectRay(primRay, scene->objects);

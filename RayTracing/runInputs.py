@@ -6,6 +6,8 @@ import time
 
 ABS_PATH = "/home/yavuz/CLionProjects/ComputerGraphics/RayTracing/inputs"
 
+# TODO call time then push everythang
+
 
 def runTests():
     print("Compiling...")
@@ -21,7 +23,7 @@ def runTests():
     for i in inputs:
         print("Rendering {}...".format(i))
         old = time.time()
-        p = Popen(['./raytracer', "../inputs/{}".format(i)])
+        p = Popen(['./raytracer', "../inputs/{}".format(i)]) # could've directly used time via PIPE
         retCode = p.wait()
         elapsed = time.time() - old
         if retCode:

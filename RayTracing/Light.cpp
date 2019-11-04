@@ -18,8 +18,8 @@ Vector3f PointLight::computeLightContribution(const Vector3f& p) {
 	 * E(d) = I / d^2
 	 */
 
-	Vector3f normalizedLightDirection = this->position - p;
-    float lightDistance = vectorLength(normalizedLightDirection);
+	Vector3f lightDirection = this->position - p;
+    float lightDistance = vectorLength(lightDirection);
     Vector3f irradianceContribution = this->intensity / (lightDistance * lightDistance);
     return irradianceContribution;
 }
