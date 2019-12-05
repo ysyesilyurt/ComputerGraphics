@@ -21,6 +21,7 @@ using namespace std;
 
 Matrix4 calcModelingTransformations(Scene & scene) {
     // TODO: Implement dis
+    // TODO: NORMALIZATION ETC.!
     Matrix4 M_model = Matrix4();
     return M_model;
 }
@@ -44,11 +45,31 @@ Matrix4 calcViewportTransformation(Scene & scene) {
     return M_viewport;
 }
 
+bool isBackfaceCulled(Camera * camera, Vec4 & v0, Vec4 & v1, Vec4 & v2) {
+    // TODO: Implement dis
+    // TODO: DO VERTICES SENT HERE NEED TO BE PERSPECTIVE DIVIDED?
+    return false;
+}
+
+void clipLine(Camera * camera, Vec4 & v0, Vec4 & v1) {
+    // TODO: Implement dis using Liang-Barsky Algorithm - update v0& and v1& as needed
+}
+
+void rasterizeLine(vector<vector<Color>> & image, Color * c0, Color * c1, Vec4 & v0, Vec4 & v1) {
+    // TODO: Implement dis using Midpoint Algorithm and fill the image's related pixels
+    // TODO: Be careful with the slopes of the lines! if not 0<m<1 then need to use a modified midpoint algorithm!
+}
+
+void rasterizeTriangle(vector<vector<Color>> & image, Color * c0, Color * c1, Color * c2, Vec4 & v0, Vec4 & v1, Vec4 & v2) {
+    // TODO: Implement dis using Barrycentric Coordinates and fill the image's related pixels
+}
+
+
 /*
 	Transformations, clipping, culling, rasterization are done here.
 	You can define helper functions inside Scene class implementation.
 */
-// TODO: Provide a Makefile!~
+// TODO: DO NOT FORGET TO Provide a Makefile!~
 // TODO: Implement this function.
 /**
  * Our Overall Rendering Pipeline - ysyesilyurt
@@ -90,31 +111,74 @@ void Scene::forwardRenderingPipeline(Camera *camera) {
     Matrix4 M_proj_cam_model = multiplyMatrixWithMatrix(M_proj, M_cam_model);
     for (int i = 0; i < this->models.size(); ++i) {
         for (int j = 0; j < this->models[i]->triangles.size(); ++j) {
-            Vec3 * v1 = this->vertices[this->models[i]->triangles[j].getFirstVertexId()];
-            Vec3 * v2 = this->vertices[this->models[i]->triangles[j].getSecondVertexId()];
-            Vec3 * v3 = this->vertices[this->models[i]->triangles[j].getThirdVertexId()];
+            Vec3 * v0 = this->vertices[this->models[i]->triangles[j].getFirstVertexId()];
+            Vec3 * v1 = this->vertices[this->models[i]->triangles[j].getSecondVertexId()];
+            Vec3 * v2 = this->vertices[this->models[i]->triangles[j].getThirdVertexId()];
+            Color * c0 = this->colorsOfVertices[this->models[i]->triangles[j].getFirstVertexId()];
+            Color * c1 = this->colorsOfVertices[this->models[i]->triangles[j].getSecondVertexId()];
+            Color * c2 = this->colorsOfVertices[this->models[i]->triangles[j].getThirdVertexId()];
+
+            Vec4 projectedV0 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v0->x, v0->y, v0->z, 1, v0->colorId));
             Vec4 projectedV1 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v1->x, v1->y, v1->z, 1, v1->colorId));
             Vec4 projectedV2 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v2->x, v2->y, v2->z, 1, v2->colorId));
-            Vec4 projectedV3 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v3->x, v3->y, v3->z, 1, v3->colorId));
+
+            // TODO: Backface CULL if enabled
+            if (this->cullingEnabled && isBackfaceCulled(camera, projectedV0, projectedV1, projectedV2)) {
+                /* If backface culling is enabled and model is backfacing then just continue, do not render this model */
+                continue;
+            }
 
             if (!this->models[i]->type) {
                 /* Wireframe mode */
 
-                // Construct Lines
-
-                // TODO: Backface CULL if enabled
                 // TODO: CLIP
-                // TODO: Pers Div => CHECK IF WE NEED THIS
+                /* Construct Lines */
+                // Create copies of vertices since their coords may change as clipping continues
+                Vec4 _projectedV0 = projectedV0;
+                Vec4 _projectedV1 = projectedV1;
+                Vec4 _projectedV2 = projectedV2;
+
+                // Line-1 => L01
+                clipLine(camera, projectedV0, projectedV1);
+
+                // Line-2 => L12
+                clipLine(camera, _projectedV1, projectedV2);
+
+                // Line-3 => L20
+                clipLine(camera, _projectedV2, _projectedV0);
+
+                // TODO: Pers Div => CHECK IF WE NEED THIS ????
+
                 // TODO: Mult with M_viewport
+                // L01
+                Vec4 viewportV0 = multiplyMatrixWithVec4(M_viewport, projectedV0);
+                Vec4 viewportV1 = multiplyMatrixWithVec4(M_viewport, projectedV1);
+
+                // L12
+                Vec4 _viewportV1 = multiplyMatrixWithVec4(M_viewport, _projectedV1);
+                Vec4 viewportV2 = multiplyMatrixWithVec4(M_viewport, projectedV2);
+
+                // L20
+                Vec4 _viewportV2 = multiplyMatrixWithVec4(M_viewport, _projectedV2);
+                Vec4 _viewportV0 = multiplyMatrixWithVec4(M_viewport, _projectedV0);
+
                 // TODO: Line Rasterization - Rasterize (vector<Color*> colorsofvertices) and fill this.image
+                rasterizeLine(this->image, c0, c1, viewportV0, viewportV1); // L01
+                rasterizeLine(this->image, c1, c2, _viewportV1, viewportV2); // L12
+                rasterizeLine(this->image, c2, c0, _viewportV2, _viewportV0); // L20
             }
             else {
                 /* Solid mode */
 
-                // TODO: Backface CULL if enabled
-                // TODO: Pers Div => CHECK IF WE NEED THIS
+                // TODO: Pers Div => CHECK IF WE NEED THIS ????
+
                 // TODO: Mult with M_viewport
+                Vec4 viewportV0 = multiplyMatrixWithVec4(M_viewport, projectedV0);
+                Vec4 viewportV1 = multiplyMatrixWithVec4(M_viewport, projectedV1);
+                Vec4 viewportV2 = multiplyMatrixWithVec4(M_viewport, projectedV2);
+
                 // TODO: Triangle Rasterization - Rasterize (vector<Color*> colorsofvertices) and fill this.image
+                rasterizeTriangle(this->image, c0, c1, c2, viewportV0, viewportV1, viewportV2);
             }
         }
     }
