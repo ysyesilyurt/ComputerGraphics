@@ -19,14 +19,40 @@
 using namespace tinyxml2;
 using namespace std;
 
+Matrix4 calcModelingTransformations(Scene & scene) {
+    // TODO: Implement dis
+    Matrix4 M_model = Matrix4();
+    return M_model;
+}
+
+Matrix4 calcCameraTransformation(Camera * camera) {
+    // TODO: Implement dis
+    Matrix4 M_cam = Matrix4();
+    return M_cam;
+}
+
+Matrix4 calcProjectionTransformation(Scene & scene) {
+    // TODO: Implement dis
+    //    if (scene.projectionType)
+    Matrix4 M_proj = Matrix4();
+    return M_proj;
+}
+
+Matrix4 calcViewportTransformation(Scene & scene) {
+    // TODO: Implement dis
+    Matrix4 M_viewport = Matrix4();
+    return M_viewport;
+}
+
 /*
 	Transformations, clipping, culling, rasterization are done here.
 	You can define helper functions inside Scene class implementation.
 */
-
+// TODO: Provide a Makefile!~
 // TODO: Implement this function.
 /**
-*   1- Implement Modeling Transformation Matrix Calculation => Mmodel
+ * Our Overall Rendering Pipeline - ysyesilyurt
+    1- Implement Modeling Transformation Matrix Calculation => Mmodel
         - Transformation
         - Rotation
         - Scaling
@@ -39,7 +65,7 @@ using namespace std;
     6- Perspective Divide (if perspective projection has been implemented) => /w
     7- Implement Viewport Transformation Matrix Calculation => Mvp
     8- Implement Rasterization
-        - Line Rasterization => Midpoint Algorithm
+        - Line Rasterization => Midpoint Algorithm => BE CAREFUL WITH SLOPES !!!!!!!!
         - Triangle Rasterization => Barrycentric Coordinates
 
     => Finally integrate these implementations in forwardRenderingPipeline() as: Vertice->1->2->3->4->5->6->7->8
@@ -54,7 +80,44 @@ using namespace std;
     -> Helpers such as normalization, dot product etc. are given to us in Helpers.h/cpp
  */
 void Scene::forwardRenderingPipeline(Camera *camera) {
+    Matrix4 M_model = calcModelingTransformations(*this);
+    Matrix4 M_cam = calcCameraTransformation(camera);
+    Matrix4 M_proj = calcProjectionTransformation(*this);
+    Matrix4 M_viewport = calcViewportTransformation(*this);
 
+    /* For each model apply these transformations + clip + cull then rasterize */
+    Matrix4 M_cam_model = multiplyMatrixWithMatrix(M_cam, M_model); // m1*m2
+    Matrix4 M_proj_cam_model = multiplyMatrixWithMatrix(M_proj, M_cam_model);
+    for (int i = 0; i < this->models.size(); ++i) {
+        for (int j = 0; j < this->models[i]->triangles.size(); ++j) {
+            Vec3 * v1 = this->vertices[this->models[i]->triangles[j].getFirstVertexId()];
+            Vec3 * v2 = this->vertices[this->models[i]->triangles[j].getSecondVertexId()];
+            Vec3 * v3 = this->vertices[this->models[i]->triangles[j].getThirdVertexId()];
+            Vec4 projectedV1 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v1->x, v1->y, v1->z, 1, v1->colorId));
+            Vec4 projectedV2 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v2->x, v2->y, v2->z, 1, v2->colorId));
+            Vec4 projectedV3 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v3->x, v3->y, v3->z, 1, v3->colorId));
+
+            if (!this->models[i]->type) {
+                /* Wireframe mode */
+
+                // Construct Lines
+
+                // TODO: Backface CULL if enabled
+                // TODO: CLIP
+                // TODO: Pers Div => CHECK IF WE NEED THIS
+                // TODO: Mult with M_viewport
+                // TODO: Line Rasterization - Rasterize (vector<Color*> colorsofvertices) and fill this.image
+            }
+            else {
+                /* Solid mode */
+
+                // TODO: Backface CULL if enabled
+                // TODO: Pers Div => CHECK IF WE NEED THIS
+                // TODO: Mult with M_viewport
+                // TODO: Triangle Rasterization - Rasterize (vector<Color*> colorsofvertices) and fill this.image
+            }
+        }
+    }
 }
 
 /*
