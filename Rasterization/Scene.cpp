@@ -23,9 +23,38 @@ using namespace std;
 	Transformations, clipping, culling, rasterization are done here.
 	You can define helper functions inside Scene class implementation.
 */
-void Scene::forwardRenderingPipeline(Camera *camera)
-{
-	// TODO: Implement this function.
+
+// TODO: Implement this function.
+/**
+*   1- Implement Modeling Transformation Matrix Calculation => Mmodel
+        - Transformation
+        - Rotation
+        - Scaling
+    2- Implement Camera Transformation Matrix Calculation => Mcam
+    3- Implement Projection Transformation Matrix Calculation => Mproj
+        - Orthogonal Projection (if proj type == 0) => Morth
+        - Perspective Projection (if proj type == 1) => Mpers = Morth * Mpers2orth
+    4- Implement Clipping Algorithm (Sutherland's or Liang's - possibly Liang's)
+    5- Implement Backface Culling
+    6- Perspective Divide (if perspective projection has been implemented) => /w
+    7- Implement Viewport Transformation Matrix Calculation => Mvp
+    8- Implement Rasterization
+        - Line Rasterization => Midpoint Algorithm
+        - Triangle Rasterization => Barrycentric Coordinates
+
+    => Finally integrate these implementations in forwardRenderingPipeline() as: Vertice->1->2->3->4->5->6->7->8
+    => Namely: Vertice * Mmodel * Mcam * Mproj -> Clipping & Culling & Pers Divide -> * Mviewport -> Rasterization
+
+    Notes:
+    -> Models have 2 types:
+        1- Solid mode (if type == 1)
+        2- Wireframe mode (if type == 0)
+    -> Clipping will be applied for only Wireframe mode
+    -> Only Backface culling will be implemented and it can be disabled/enabled (Default is disabled!)
+    -> Helpers such as normalization, dot product etc. are given to us in Helpers.h/cpp
+ */
+void Scene::forwardRenderingPipeline(Camera *camera) {
+
 }
 
 /*

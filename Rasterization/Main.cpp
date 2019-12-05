@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
             // Converts PPM image in given path to PNG file, by calling ImageMagick's 'convert' command.
             // Notice that os_type is not given as 1 (Ubuntu) or 2 (Windows), below call doesn't do conversion.
             // Change os_type to 1 or 2, after being sure that you have ImageMagick installed.
-            scene->convertPPMToPNG(scene->cameras[i]->outputFileName, 99);
+            scene->convertPPMToPNG(scene->cameras[i]->outputFileName, 1);
         }
 
         return 0;
