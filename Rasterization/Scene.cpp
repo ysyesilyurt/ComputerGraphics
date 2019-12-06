@@ -19,8 +19,9 @@
 using namespace tinyxml2;
 using namespace std;
 
-Matrix4 calcModelingTransformations(Scene & scene) {
-    // TODO: Implement dis
+Matrix4 calcModelingTransformations(Camera * camera, const vector<Translation*>& translations,
+        const vector<Rotation*>& rotations, const vector<Scaling*>& scalings) {
+    // TODO: Implement dis -- GOKHAN
     // TODO: Do not forget uvw NORMALIZATIONS in operations ETC.!
     Matrix4 M_model = Matrix4();
     return M_model;
@@ -163,12 +164,11 @@ void rasterizeTriangle(vector<vector<Color>> & image, Color * c0, Color * c1, Co
     -> Only Backface culling will be implemented and it can be disabled/enabled (Default is disabled!)
     -> Helpers such as normalization, dot product etc. are given to us in Helpers.h/cpp
  */
-void Scene::forwardRenderingPipeline(Camera *camera) {
-    Matrix4 M_model = calcModelingTransformations(*this);
+void Scene::forwardRenderingPipeline(Camera * camera) {
+    Matrix4 M_model = calcModelingTransformations(camera, this->translations, this->rotations, this->scalings);
     Matrix4 M_cam = calcCameraTransformation(camera);
     Matrix4 M_proj = calcProjectionTransformation(camera, this->projectionType);
-    Matrix4 M_viewport = calcViewportTransformation(camera); // Normally this matrix is 3x4 but in code it is 4x4
-                                                             // we keep this matrix's last row as 0 0 0 1
+    Matrix4 M_viewport = calcViewportTransformation(camera); // Normally this matrix is 3x4 but in code it is 4x4 we keep this matrix's last row as 0 0 0 1
 
     /* For each model apply these transformations + clip + cull then rasterize */
     Matrix4 M_cam_model = multiplyMatrixWithMatrix(M_cam, M_model); // m1*m2
@@ -186,7 +186,7 @@ void Scene::forwardRenderingPipeline(Camera *camera) {
             Vec4 projectedV1 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v1->x, v1->y, v1->z, 1, v1->colorId));
             Vec4 projectedV2 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v2->x, v2->y, v2->z, 1, v2->colorId));
 
-            // TODO: Backface CULL if enabled
+            /* Culling Phase if enabled */
             if (this->cullingEnabled && isBackfaceCulled(camera, projectedV0, projectedV1, projectedV2)) {
                 /* If backface culling is enabled and model is backfacing then just continue, do not render this model */
                 continue;
