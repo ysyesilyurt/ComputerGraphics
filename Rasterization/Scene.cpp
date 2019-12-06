@@ -27,22 +27,42 @@ Matrix4 calcModelingTransformations(Scene & scene) {
 }
 
 Matrix4 calcCameraTransformation(Camera * camera) {
-    // TODO: Implement dis
-    Matrix4 M_cam = Matrix4();
-    return M_cam;
+    double T[4][4] = {{1, 0, 0, -(camera->pos.x)},
+                        {0, 1, 0, -(camera->pos.y)},
+                        {0, 0, 1, -(camera->pos.z)},
+                        {0, 0, 0, 1}};
+    double R[4][4] = {{camera->u.x, camera->u.y, camera->u.z, 0},
+                      {camera->v.x, camera->v.y, camera->v.z, 0},
+                      {camera->w.x, camera->w.y, camera->w.z, 0},
+                      {0, 0, 0, 1}};
+    return multiplyMatrixWithMatrix(Matrix4(T), Matrix4(R));
 }
 
-Matrix4 calcProjectionTransformation(Scene & scene) {
-    // TODO: Implement dis
-    //    if (scene.projectionType)
-    Matrix4 M_proj = Matrix4();
-    return M_proj;
+Matrix4 calcProjectionTransformation(Camera * camera, bool projType) {
+    if (projType) {
+        /* Return M_pers */
+        double M_pers[4][4] = {{(2*camera->near)/(camera->right - camera->left), 0, (camera->right + camera->left) / (camera->right - camera->left), 0},
+                               {0, (2*camera->near)/(camera->top - camera->bottom), (camera->top + camera->bottom) / (camera->top - camera->bottom), 0},
+                               {0, 0, -((camera->far + camera->near) / (camera->far - camera->near)), -((2*camera->far*camera->near) / (camera->far - camera->near))},
+                               {0, 0, -1, 0}};
+        return Matrix4(M_pers);
+    }
+    else {
+        /* Return M_orth */
+        double M_orth[4][4] = {{2/(camera->right - camera->left), 0, 0, -((camera->right + camera->left) / (camera->right - camera->left))},
+                               {0, 2/(camera->top - camera->bottom), 0, -((camera->top + camera->bottom) / (camera->top - camera->bottom))},
+                               {0, 0, -(2/(camera->far - camera->near)), -((camera->far + camera->near) / (camera->far - camera->near))},
+                               {0, 0, 0, 1}};
+        return Matrix4(M_orth);
+    }
 }
 
-Matrix4 calcViewportTransformation(Scene & scene) {
-    // TODO: Implement dis
-    Matrix4 M_viewport = Matrix4();
-    return M_viewport;
+Matrix4 calcViewportTransformation(Camera * camera) {
+    double M_viewport[4][4] = {{camera->horRes/2.0, 0, 0, (camera->horRes-1)/2.0},
+                               {0, camera->verRes/2.0, 0, (camera->verRes-1)/2.0},
+                               {0, 0, 0.5, 0.5},
+                               {0, 0, 0, 1}}; // TODO: We do not need last line semantically but need in code!
+    return Matrix4(M_viewport);
 }
 
 bool isBackfaceCulled(Camera * camera, Vec4 & v0, Vec4 & v1, Vec4 & v2) {
@@ -103,8 +123,8 @@ void rasterizeTriangle(vector<vector<Color>> & image, Color * c0, Color * c1, Co
 void Scene::forwardRenderingPipeline(Camera *camera) {
     Matrix4 M_model = calcModelingTransformations(*this);
     Matrix4 M_cam = calcCameraTransformation(camera);
-    Matrix4 M_proj = calcProjectionTransformation(*this);
-    Matrix4 M_viewport = calcViewportTransformation(*this);
+    Matrix4 M_proj = calcProjectionTransformation(camera, this->projectionType);
+    Matrix4 M_viewport = calcViewportTransformation(camera);
 
     /* For each model apply these transformations + clip + cull then rasterize */
     Matrix4 M_cam_model = multiplyMatrixWithMatrix(M_cam, M_model); // m1*m2
