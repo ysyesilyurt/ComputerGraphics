@@ -21,7 +21,7 @@ using namespace std;
 
 Matrix4 calcModelingTransformations(Scene & scene) {
     // TODO: Implement dis
-    // TODO: NORMALIZATION ETC.!
+    // TODO: Do not forget uvw NORMALIZATIONS in operations ETC.!
     Matrix4 M_model = Matrix4();
     return M_model;
 }
@@ -71,12 +71,56 @@ bool isBackfaceCulled(Camera * camera, Vec4 & v0, Vec4 & v1, Vec4 & v2) {
     return false;
 }
 
+bool visible(double den, double num, double & t_E, double & t_L) {
+    /* Helper function for checking visibility of the lines - updates t_E and t_L as needed */
+    double t = num / den;
+    if (den > 0) {
+        /* Potentially Entering */
+        if (t > t_L)
+            return false;
+        else if (t > t_E)
+            t_E = t;
+    }
+    else if (den < 0) {
+        /* Potentially Leaving */
+        if (t < t_E)
+            return false;
+        else if (t < t_L)
+            t_L = t;
+    }
+    else if (num > 0) {
+        /* Line is parallel to the edge and outside of the bounds */
+        return false;
+    }
+    return true;
+}
+
 void clipLine(Camera * camera, Vec4 & v0, Vec4 & v1) {
-    // TODO: Implement dis using Liang-Barsky Algorithm - update v0& and v1& as needed
+    /* Clips given line with Liang-Barsky Algorithm in 3D
+     * as a result v0 and v1 gets updated as needed */
+    double t_E = 0, t_L = 1;
+    double dx = v1.x - v0.x, dy = v1.y - v0.y, dz = v1.z - v0.z;
+    double x_min, x_max, y_min, y_max, z_min, z_max; // TODO: fill these values! -- YAVUZ
+//    bool isVisible = false;
+    if (visible(dx, x_min-v0.x, t_E, t_L) && visible(-dx, v0.x-x_max, t_E, t_L)
+        && visible(dy, y_min-v0.y, t_E, t_L) && visible(-dy, v0.y - y_max, t_E, t_L)
+        && visible(dz, z_min-v0.z, t_E, t_L) && visible(-dz, v0.z-z_max, t_E, t_L)) {
+//        isVisible = true;
+        if (t_L < 1) {
+            v1.x = v0.x + (dx * t_L);
+            v1.y = v0.y + (dy * t_L);
+            v1.z = v0.z + (dz * t_L);
+        }
+        if (t_E > 0) {
+            v0.x = v0.x + (dx * t_E);
+            v0.y = v0.y + (dy * t_E);
+            v0.z = v0.z + (dz * t_E);
+        }
+    }
 }
 
 void rasterizeLine(vector<vector<Color>> & image, Color * c0, Color * c1, Vec4 & v0, Vec4 & v1) {
-    // TODO: Implement dis using Midpoint Algorithm and fill the image's related pixels
+    // TODO: Implement dis using Midpoint Algorithm and fill the image's related pixels - YAVUZ
     // TODO: Be careful with the slopes of the lines! if not 0<m<1 then need to use a modified midpoint algorithm!
 }
 
@@ -89,8 +133,7 @@ void rasterizeTriangle(vector<vector<Color>> & image, Color * c0, Color * c1, Co
 	Transformations, clipping, culling, rasterization are done here.
 	You can define helper functions inside Scene class implementation.
 */
-// TODO: DO NOT FORGET TO Provide a Makefile!~
-// TODO: Implement this function.
+// TODO: DO NOT FORGET TO Provide a Makefile!~ YAVUZ
 /**
  * Our Overall Rendering Pipeline - ysyesilyurt
     1- Implement Modeling Transformation Matrix Calculation => Mmodel
@@ -124,7 +167,8 @@ void Scene::forwardRenderingPipeline(Camera *camera) {
     Matrix4 M_model = calcModelingTransformations(*this);
     Matrix4 M_cam = calcCameraTransformation(camera);
     Matrix4 M_proj = calcProjectionTransformation(camera, this->projectionType);
-    Matrix4 M_viewport = calcViewportTransformation(camera);
+    Matrix4 M_viewport = calcViewportTransformation(camera); // Normally this matrix is 3x4 but in code it is 4x4
+                                                             // we keep this matrix's last row as 0 0 0 1
 
     /* For each model apply these transformations + clip + cull then rasterize */
     Matrix4 M_cam_model = multiplyMatrixWithMatrix(M_cam, M_model); // m1*m2
@@ -151,13 +195,13 @@ void Scene::forwardRenderingPipeline(Camera *camera) {
             if (!this->models[i]->type) {
                 /* Wireframe mode */
 
-                // TODO: CLIP
-                /* Construct Lines */
+                /* Clipping Phase */
                 // Create copies of vertices since their coords may change as clipping continues
                 Vec4 _projectedV0 = projectedV0;
                 Vec4 _projectedV1 = projectedV1;
                 Vec4 _projectedV2 = projectedV2;
 
+                /* Construct Lines to be clipped */
                 // Line-1 => L01
                 clipLine(camera, projectedV0, projectedV1);
 
@@ -169,7 +213,7 @@ void Scene::forwardRenderingPipeline(Camera *camera) {
 
                 // TODO: Pers Div => CHECK IF WE NEED THIS ????
 
-                // TODO: Mult with M_viewport
+                /* Viewport Transformation Phase */
                 // L01
                 Vec4 viewportV0 = multiplyMatrixWithVec4(M_viewport, projectedV0);
                 Vec4 viewportV1 = multiplyMatrixWithVec4(M_viewport, projectedV1);
@@ -182,7 +226,7 @@ void Scene::forwardRenderingPipeline(Camera *camera) {
                 Vec4 _viewportV2 = multiplyMatrixWithVec4(M_viewport, _projectedV2);
                 Vec4 _viewportV0 = multiplyMatrixWithVec4(M_viewport, _projectedV0);
 
-                // TODO: Line Rasterization - Rasterize (vector<Color*> colorsofvertices) and fill this.image
+                /* Final step of FRP - Rasterize the Line and fill the image for this model */
                 rasterizeLine(this->image, c0, c1, viewportV0, viewportV1); // L01
                 rasterizeLine(this->image, c1, c2, _viewportV1, viewportV2); // L12
                 rasterizeLine(this->image, c2, c0, _viewportV2, _viewportV0); // L20
@@ -192,12 +236,12 @@ void Scene::forwardRenderingPipeline(Camera *camera) {
 
                 // TODO: Pers Div => CHECK IF WE NEED THIS ????
 
-                // TODO: Mult with M_viewport
+                /* Viewport Transformation Phase */
                 Vec4 viewportV0 = multiplyMatrixWithVec4(M_viewport, projectedV0);
                 Vec4 viewportV1 = multiplyMatrixWithVec4(M_viewport, projectedV1);
                 Vec4 viewportV2 = multiplyMatrixWithVec4(M_viewport, projectedV2);
 
-                // TODO: Triangle Rasterization - Rasterize (vector<Color*> colorsofvertices) and fill this.image
+                /* Final step of FRP - Rasterize the Triangle and fill the image for this model */
                 rasterizeTriangle(this->image, c0, c1, c2, viewportV0, viewportV1, viewportV2);
             }
         }
