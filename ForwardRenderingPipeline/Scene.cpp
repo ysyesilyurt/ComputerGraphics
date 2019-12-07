@@ -22,7 +22,7 @@ using namespace std;
 Matrix4 calcModelingTransformations(Camera * camera, const vector<Translation*>& translations,
         const vector<Rotation*>& rotations, const vector<Scaling*>& scalings) {
     // TODO: Implement dis -- GOKHAN
-    // TODO: Do not forget uvw NORMALIZATIONS in operations ETC.!
+    // Do not forget uvw NORMALIZATIONS in operations ETC.!
     Matrix4 M_model = Matrix4();
     return M_model;
 }
@@ -67,9 +67,13 @@ Matrix4 calcViewportTransformation(Camera * camera) {
 }
 
 bool isBackfaceCulled(Camera * camera, Vec4 & v0, Vec4 & v1, Vec4 & v2) {
-    // TODO: Implement dis
     // TODO: DO VERTICES SENT HERE NEED TO BE PERSPECTIVE DIVIDED?
-    return false;
+
+    Vec3 edge01 = subtractVec3(v1, v0); // TODO: Vec4 -> Vec3 YAVUZ
+    Vec3 edge02 = subtractVec3(v2, v0);
+    Vec3 normalVector = normalizeVec3(crossProductVec3(edge01, edge02));
+    double res = dotProductVec3(normalVector, v0); // Todo V0
+    return (res < 0);
 }
 
 bool visible(double den, double num, double & t_E, double & t_L) {
@@ -101,12 +105,12 @@ void clipLine(Camera * camera, Vec4 & v0, Vec4 & v1) {
      * as a result v0 and v1 gets updated as needed */
     double t_E = 0, t_L = 1;
     double dx = v1.x - v0.x, dy = v1.y - v0.y, dz = v1.z - v0.z;
-    double x_min, x_max, y_min, y_max, z_min, z_max; // TODO: fill these values! -- YAVUZ
-//    bool isVisible = false;
+    double x_min = -1, y_min = -1, z_min = -1; // TODO: Check the correctness of these values
+    double x_max = 1, y_max = 1, z_max = 1; // TODO: Check the correctness of these values
     if (visible(dx, x_min-v0.x, t_E, t_L) && visible(-dx, v0.x-x_max, t_E, t_L)
         && visible(dy, y_min-v0.y, t_E, t_L) && visible(-dy, v0.y - y_max, t_E, t_L)
         && visible(dz, z_min-v0.z, t_E, t_L) && visible(-dz, v0.z-z_max, t_E, t_L)) {
-//        isVisible = true;
+        /* At least some part of the line is visible to the camera */
         if (t_L < 1) {
             v1.x = v0.x + (dx * t_L);
             v1.y = v0.y + (dy * t_L);
@@ -120,13 +124,68 @@ void clipLine(Camera * camera, Vec4 & v0, Vec4 & v1) {
     }
 }
 
-void rasterizeLine(vector<vector<Color>> & image, Color * c0, Color * c1, Vec4 & v0, Vec4 & v1) {
-    // TODO: Implement dis using Midpoint Algorithm and fill the image's related pixels - YAVUZ
-    // TODO: Be careful with the slopes of the lines! if not 0<m<1 then need to use a modified midpoint algorithm!
+void rasterizeLine(vector<vector<Color>> & image, Color * c0, Color * c1, Vec4 & v0, Vec4 & v1) { // TODO: add overloads to Color then come back and fix here
+    double dx = v1.x - v0.x;
+    double dy = v1.y - v1.x;
+    double d, incrAmount = 1;
+    Color dc, c = *c0;
+
+    /* First Check if the slope is between 0 < m <= 1 */
+    if (dy != 0 && dx != 0 && abs(dy) <= abs(dx)) {
+        /* Normal Midpoint Algorithm */
+        if (v1.x < v0.x) {
+            swap(v0, v1);
+        }
+        if (v1.y < v0.y) {
+            incrAmount = -1;
+        }
+
+        int y = v0.y;
+        d = (v0.y - v1.y) + (incrAmount * 0.5 * (v1.x - v0.x));
+        dc = (c1 - c0) / (v1.x - v0.x);
+        for (int x = v0.x; x <= v1.x; x++) {
+            image[x][y] = c.round();
+            if (d * incrAmount < 0) { // choose NE
+                y += incrAmount;
+                d += (v0.y - v1.y) + (incrAmount * (v1.x - v0.x));
+            }
+            else // choose E
+                d += (v0.y - v1.y);
+            c = c + dc;
+        }
+    }
+    else if (dy != 0 && dx != 0 && abs(dy) > abs(dx)) {
+        /* Modified Midpoint Algorithm for 1 < m < INF */
+        if (v1.y < v0.y) {
+            swap(v0, v1);
+        }
+        if (v1.x < v0.x) {
+            incrAmount = -1;
+        }
+
+        int x = v0.x;
+        d = (v1.x - v0.x) + (incrAmount * 0.5 * (v0.y - v1.y));
+        dc = (c1 - c0) / (v1.y - v0.y);
+
+        for (int y = v0.y; y <= v1.y; y++) {
+            image[x][y] = c.round();
+            if (d * incrAmount > 0) {
+                x += incrAmount;
+                d += (v1.x - v0.x) + (incrAmount * (v0.y - v1.y));
+            }
+            else
+                d += (v1.x - v0.x);
+            c = c + dc;
+        }
+    }
+    else {
+        /* Slope is zero or undef -- Fail */
+        return;
+    }
 }
 
 void rasterizeTriangle(vector<vector<Color>> & image, Color * c0, Color * c1, Color * c2, Vec4 & v0, Vec4 & v1, Vec4 & v2) {
-    // TODO: Implement dis using Barrycentric Coordinates and fill the image's related pixels
+    // TODO: Implement dis using Barrycentric Coordinates and fill the image's related pixels ~ GOKHAN
 }
 
 
@@ -150,7 +209,7 @@ void rasterizeTriangle(vector<vector<Color>> & image, Color * c0, Color * c1, Co
     6- Perspective Divide (if perspective projection has been implemented) => /w
     7- Implement Viewport Transformation Matrix Calculation => Mvp
     8- Implement Rasterization
-        - Line Rasterization => Midpoint Algorithm => BE CAREFUL WITH SLOPES !!!!!!!!
+        - Line Rasterization => Midpoint Algorithm => BE CAREFUL WITH SLOPES!
         - Triangle Rasterization => Barrycentric Coordinates
 
     => Finally integrate these implementations in forwardRenderingPipeline() as: Vertice->1->2->3->4->5->6->7->8
@@ -173,14 +232,14 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
     /* For each model apply these transformations + clip + cull then rasterize */
     Matrix4 M_cam_model = multiplyMatrixWithMatrix(M_cam, M_model); // m1*m2
     Matrix4 M_proj_cam_model = multiplyMatrixWithMatrix(M_proj, M_cam_model);
-    for (int i = 0; i < this->models.size(); ++i) {
-        for (int j = 0; j < this->models[i]->triangles.size(); ++j) {
-            Vec3 * v0 = this->vertices[this->models[i]->triangles[j].getFirstVertexId()];
-            Vec3 * v1 = this->vertices[this->models[i]->triangles[j].getSecondVertexId()];
-            Vec3 * v2 = this->vertices[this->models[i]->triangles[j].getThirdVertexId()];
-            Color * c0 = this->colorsOfVertices[this->models[i]->triangles[j].getFirstVertexId()];
-            Color * c1 = this->colorsOfVertices[this->models[i]->triangles[j].getSecondVertexId()];
-            Color * c2 = this->colorsOfVertices[this->models[i]->triangles[j].getThirdVertexId()];
+    for (auto & model : this->models) {
+        for (auto & triangle : model->triangles) {
+            Vec3 * v0 = this->vertices[triangle.getFirstVertexId()];
+            Vec3 * v1 = this->vertices[triangle.getSecondVertexId()];
+            Vec3 * v2 = this->vertices[triangle.getThirdVertexId()];
+            Color * c0 = this->colorsOfVertices[triangle.getFirstVertexId()];
+            Color * c1 = this->colorsOfVertices[triangle.getSecondVertexId()];
+            Color * c2 = this->colorsOfVertices[triangle.getThirdVertexId()];
 
             Vec4 projectedV0 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v0->x, v0->y, v0->z, 1, v0->colorId));
             Vec4 projectedV1 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v1->x, v1->y, v1->z, 1, v1->colorId));
@@ -192,7 +251,7 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
                 continue;
             }
 
-            if (!this->models[i]->type) {
+            if (!model->type) {
                 /* Wireframe mode */
 
                 /* Clipping Phase */
