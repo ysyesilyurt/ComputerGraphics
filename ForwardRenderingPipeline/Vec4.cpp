@@ -51,6 +51,15 @@ double Vec4::getElementAt(int index)
     }
 }
 
+Vec4 & Vec4::operator/=(double num) {
+    x /= num;
+    y /= num;
+    z /= num;
+    t /= num;
+
+    return *this;
+}
+
 ostream& operator<<(ostream& os, const Vec4& v) {
     
     os << fixed << setprecision(6) << "[" << v.x << ", " << v.y << ", " << v.z << ", " << v.t << "]";

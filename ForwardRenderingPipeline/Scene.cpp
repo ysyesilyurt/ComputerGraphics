@@ -40,7 +40,6 @@ Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Tra
         }
         else if (model.transformationTypes[i] == 's') {
             Scaling * s = scalings[model.transformationIds[i]-1]; // since transformations start from 1
-            // TODO IF ORIGIN PROBLEM THEN TRANSLATE ALSO !!
             double sMatrix[4][4] = {{s->sx,0,0,0},
                                     {0,s->sy,0,0},
                                     {0,0,s->sz,0},
@@ -67,7 +66,6 @@ Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Tra
             // Do not forget to normalize v and w
             v = normalizeVec3(v);
             w = normalizeVec3(w);
-            // TODO IF ONB DOES NOT HAVE SAME ORIGIN WITH CAMERA THEN TRANSLATE ALSO !!
             double mMatrix[4][4] = {{u.x,u.y,u.z,0},
                                     {v.x,v.y,v.z,0},
                                     {w.x,w.y,w.z,0},
@@ -141,7 +139,7 @@ bool isBackfaceCulled(Camera * camera, Vec4 & v0, Vec4 & v1, Vec4 & v2) {
     Vec3 edge01 = subtractVec3(v_1, v_0);
     Vec3 edge02 = subtractVec3(v_2, v_0);
     Vec3 normalVector = normalizeVec3(crossProductVec3(edge01, edge02));
-    double res = dotProductVec3(normalVector, v_0); // Todo V0 -- camera?
+    double res = dotProductVec3(normalVector, v_0); // Todo V0 -- camera? -> ok.
     return (res < 0);
 }
 
@@ -193,70 +191,74 @@ void clipLine(Camera * camera, Vec4 & v0, Vec4 & v1) {
 }
 
 void rasterizeLine(vector<vector<Color>> & image, Color * c0, Color * c1, Vec4 & v0, Vec4 & v1) {
-    double dx = v1.x - v0.x;
-    double dy = v1.y - v1.x;
-    double d, incrAmount = 1;
-    Color dc, c, c_0 = *c0, c_1 = *c1;
-
-    /* First Check if the slope is between 0 < m <= 1 */
-    if (dy != 0 && dx != 0 && abs(dy) <= abs(dx)) {
-        /* Normal Midpoint Algorithm */
-        if (v1.x < v0.x) {
-            swap(v0, v1);
+    // TODO: Rewrite this rasterization according to 8 cases
+//    double dx = v1.x - v0.x;
+//    double dy = v1.y - v1.x;
+//    int d, incrAmount = 1;
+//    Color dc, c, c_0 = *c0, c_1 = *c1;
+//
+//    /* First Check if the slope is between 0 < m <= 1 */
+//    if (dy != 0 && dx != 0 && abs(dy) <= abs(dx)) {
+//        /* Normal Midpoint Algorithm */
+//        if (v1.x < v0.x) {
+//            swap(v0, v1);
+////            swap(c_0, c_1);
+//            c_0.swap(c_1); // TODO check if this is needed
+//        }
+//        if (v1.y < v0.y) {
+//            /* Make sure that line goes in negative direction in each iteration */
+//            incrAmount = -1;
+//        }
+//
+//        int y = v0.y;
+//        c = c_0;
+//        d = (v0.y - v1.y) + (incrAmount * 0.5 * (v1.x - v0.x));
+//        dc = (c_1 - c_0) / (v1.x - v0.x);
+//        for (int x = v0.x; x <= v1.x; x++) {
+//            cout << "slope is <= 1 and " << x << " " << y << "\n";
+//            image[x][y] = c.round();
+//            if (d * incrAmount < 0) { // choose NE
+//                y += incrAmount;
+//                d += (v0.y - v1.y) + (incrAmount * (v1.x - v0.x));
+//            }
+//            else // choose E
+//                d += (v0.y - v1.y);
+//            c = c + dc;
+//        }
+//    }
+//    else if (dy != 0 && dx != 0 && abs(dy) > abs(dx)) {
+//        /* Modified Midpoint Algorithm for 1 < m < INF */
+//        if (v1.y < v0.y) {
+//            swap(v0, v1);
 //            swap(c_0, c_1);
-            c_0.swap(c_1); // TODO check if this is needed
-        }
-        if (v1.y < v0.y) {
-            /* Make sure that line goes in negative direction in each iteration */
-            incrAmount = -1;
-        }
-
-        int y = v0.y;
-        c = c_0;
-        d = (v0.y - v1.y) + (incrAmount * 0.5 * (v1.x - v0.x));
-        dc = (c_1 - c_0) / (v1.x - v0.x);
-        for (int x = v0.x; x <= v1.x; x++) {
-            image[x][y] = c.round();
-            if (d * incrAmount < 0) { // choose NE
-                y += incrAmount;
-                d += (v0.y - v1.y) + (incrAmount * (v1.x - v0.x));
-            }
-            else // choose E
-                d += (v0.y - v1.y);
-            c = c + dc;
-        }
-    }
-    else if (dy != 0 && dx != 0 && abs(dy) > abs(dx)) {
-        /* Modified Midpoint Algorithm for 1 < m < INF */
-        if (v1.y < v0.y) {
-            swap(v0, v1);
-            swap(c_0, c_1);
-        }
-        if (v1.x < v0.x) {
-            /* Make sure that line goes in negative direction in each iteration */
-            incrAmount = -1;
-        }
-
-        int x = v0.x;
-        c = c_0;
-        d = (v1.x - v0.x) + (incrAmount * 0.5 * (v0.y - v1.y));
-        dc = (c_1 - c_0) / (v1.y - v0.y);
-
-        for (int y = v0.y; y <= v1.y; y++) {
-            image[x][y] = c.round();
-            if (d * incrAmount > 0) {
-                x += incrAmount;
-                d += (v1.x - v0.x) + (incrAmount * (v0.y - v1.y));
-            }
-            else
-                d += (v1.x - v0.x);
-            c = c + dc;
-        }
-    }
-    else {
-        /* Slope is zero or undef -- Fail */
-        return;
-    }
+//        }
+//        if (v1.x < v0.x) {
+//            /* Make sure that line goes in negative direction in each iteration */
+//            incrAmount = -1;
+//        }
+//
+//        int x = v0.x;
+//        c = c_0;
+//        d = (v1.x - v0.x) + (incrAmount * 0.5 * (v0.y - v1.y));
+//        dc = (c_1 - c_0) / (v1.y - v0.y);
+//
+//        for (int y = v0.y; y <= v1.y; y++) {
+//            cout << x << " " << y << "\n";
+//            image[x][y] = c.round();
+//            cout << "done for " << c.round() << "\n";
+//            if (d * incrAmount > 0) {
+//                x += incrAmount;
+//                d += (v1.x - v0.x) + (incrAmount * (v0.y - v1.y));
+//            }
+//            else
+//                d += (v1.x - v0.x);
+//            c = c + dc;
+//        }
+//    }
+//    else {
+//        /* Slope is zero or undef -- Fail */
+//        return;
+//    }
 }
 
 void rasterizeTriangle(vector<vector<Color>> & image, Color * c0, Color * c1, Color * c2, Vec4 & v0, Vec4 & v1, Vec4 & v2) {
@@ -345,11 +347,17 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
                 // Line-3 => L20
                 clipLine(camera, _projectedV2, _projectedV0);
 
-                // TODO: Pers Div => CHECK IF WE NEED THIS ????
+                /* Perform Perspective Division */
+                _projectedV0 /= _projectedV0.t;
+                _projectedV1 /= _projectedV1.t;
+                _projectedV2 /= _projectedV2.t;
+                projectedV0 /= projectedV0.t;
+                projectedV1 /= projectedV1.t;
+                projectedV2 /= projectedV2.t;
 
                 /* Viewport Transformation Phase */
                 // L01
-                Vec4 viewportV0 = multiplyMatrixWithVec4(M_viewport, projectedV0);
+                Vec4 viewportV0 = multiplyMatrixWithVec4(M_viewport, projectedV0); // TODO beware 3x4 by 4x1
                 Vec4 viewportV1 = multiplyMatrixWithVec4(M_viewport, projectedV1);
 
                 // L12
@@ -368,10 +376,13 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
             else {
                 /* Solid mode */
 
-                // TODO: Pers Div => CHECK IF WE NEED THIS ????
+                /* Perform Perspective Division */
+                projectedV0 /= projectedV0.t;
+                projectedV1 /= projectedV1.t;
+                projectedV2 /= projectedV2.t;
 
                 /* Viewport Transformation Phase */
-                Vec4 viewportV0 = multiplyMatrixWithVec4(M_viewport, projectedV0);
+                Vec4 viewportV0 = multiplyMatrixWithVec4(M_viewport, projectedV0); // TODO beware 3x4 by 4x1
                 Vec4 viewportV1 = multiplyMatrixWithVec4(M_viewport, projectedV1);
                 Vec4 viewportV2 = multiplyMatrixWithVec4(M_viewport, projectedV2);
 
