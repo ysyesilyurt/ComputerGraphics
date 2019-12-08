@@ -20,6 +20,51 @@ Color::Color(const Color &other)
     this->b = other.b;
 }
 
+Color Color::operator+(const Color & rhs) {
+    Color c;
+    c.r = r + rhs.r;
+    c.g = g + rhs.g;
+    c.b = b + rhs.b;
+    return c;
+}
+
+Color Color::operator-(const Color & rhs) {
+    Color c;
+    c.r = r - rhs.r;
+    c.g = g - rhs.g;
+    c.b = b - rhs.b;
+    return c;
+}
+
+Color Color::operator*(double num) {
+    Color c;
+    c.r = r*num;
+    c.g = g*num;
+    c.b = b*num;
+    return c;
+}
+
+Color Color::operator/(double num) {
+    Color c;
+    c.r = r/num;
+    c.g = g/num;
+    c.b = b/num;
+    return c;
+}
+
+Color & Color::round(){
+    r = (int)(r + 0.5);
+    g = (int)(g + 0.5);
+    b = (int)(b + 0.5);
+    return *this;
+}
+
+void Color::swap(Color & rhs) {
+    std::swap(r,rhs.r);
+    std::swap(g,rhs.g);
+    std::swap(b,rhs.b);
+}
+
 ostream& operator<<(ostream& os, const Color& c)
 {
     os << fixed << setprecision(0) << "rgb(" << c.r << ", " << c.g << ", " << c.b << ")";

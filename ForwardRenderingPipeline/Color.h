@@ -11,6 +11,12 @@ public:
     Color();
     Color(double r, double g, double b);
     Color(const Color &other);
+    Color operator+(const Color &);
+    Color operator-(const Color &);
+    Color operator*(double);
+    Color operator/(double);
+    Color & round();
+    void swap(Color &);
     friend std::ostream& operator<<(std::ostream& os, const Color& c);
 };
 

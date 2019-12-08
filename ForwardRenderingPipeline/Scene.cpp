@@ -21,11 +21,9 @@ using namespace std;
 
 Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Translation*>& translations,
         const vector<Rotation*>& rotations, const vector<Scaling*>& scalings) {
-    // TODO: Implement dis -- GOKHAN
-    // Do not forget uvw NORMALIZATIONS in operations ETC.!
-
     /* Create Modeling Transformation Matrix that is constructed with correct order of transformations and return it */
-    Matrix4 M_model = nullptr;
+    Matrix4 M_model;
+    bool unInitialized = true;
     for (int i = 0; i < model.numberOfTransformations; ++i) {
         if (model.transformationTypes[i] == 't') {
             Translation * t = translations[model.transformationIds[i]-1]; // since transformations start from 1
@@ -33,10 +31,12 @@ Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Tra
                                    {0,1,0,t->ty},
                                    {0,0,1,t->tz},
                                    {0,0,0,1}};
-            if (M_model)
+            if (!unInitialized)
                 M_model = multiplyMatrixWithMatrix(M_model, tMatrix);
-            else
+            else {
+                unInitialized = false;
                 M_model = tMatrix;
+            }
         }
         else if (model.transformationTypes[i] == 's') {
             Scaling * s = scalings[model.transformationIds[i]-1]; // since transformations start from 1
@@ -45,10 +45,12 @@ Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Tra
                                     {0,s->sy,0,0},
                                     {0,0,s->sz,0},
                                     {0,0,0,1}};
-            if (M_model)
+            if (!unInitialized)
                 M_model = multiplyMatrixWithMatrix(M_model, sMatrix);
-            else
+            else {
+                unInitialized = false;
                 M_model = sMatrix;
+            }
         }
         else if (model.transformationTypes[i] == 'r') {
             Rotation * r = rotations[model.transformationIds[i]-1]; // since transformations start from 1
@@ -62,6 +64,9 @@ Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Tra
             else if (minComp == abs(r->uz))
                 v = Vec3(-1 * r->ux, r->ux, 0, -1);
             w = crossProductVec3(u, v);
+            // Do not forget to normalize v and w
+            v = normalizeVec3(v);
+            w = normalizeVec3(w);
             // TODO IF ONB DOES NOT HAVE SAME ORIGIN WITH CAMERA THEN TRANSLATE ALSO !!
             double mMatrix[4][4] = {{u.x,u.y,u.z,0},
                                     {v.x,v.y,v.z,0},
@@ -78,10 +83,12 @@ Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Tra
                                     {0,0,0,1}};
             Matrix4 rot1 = multiplyMatrixWithMatrix(rMatrix, mMatrix);
             Matrix4 rotRes = multiplyMatrixWithMatrix(mMatrix_inverse, rot1);
-            if (M_model)
+            if (!unInitialized)
                 M_model = multiplyMatrixWithMatrix(M_model, rotRes);
-            else
+            else {
+                unInitialized = false;
                 M_model = rotRes;
+            }
         }
     }
     return M_model;
@@ -134,7 +141,7 @@ bool isBackfaceCulled(Camera * camera, Vec4 & v0, Vec4 & v1, Vec4 & v2) {
     Vec3 edge01 = subtractVec3(v_1, v_0);
     Vec3 edge02 = subtractVec3(v_2, v_0);
     Vec3 normalVector = normalizeVec3(crossProductVec3(edge01, edge02));
-    double res = dotProductVec3(normalVector, v_0); // Todo V0
+    double res = dotProductVec3(normalVector, v_0); // Todo V0 -- camera?
     return (res < 0);
 }
 
@@ -167,11 +174,10 @@ void clipLine(Camera * camera, Vec4 & v0, Vec4 & v1) {
      * as a result v0 and v1 gets updated as needed */
     double t_E = 0, t_L = 1;
     double dx = v1.x - v0.x, dy = v1.y - v0.y, dz = v1.z - v0.z;
-    double x_min = -1, y_min = -1, z_min = -1; // TODO: Check the correctness of these values
-    double x_max = 1, y_max = 1, z_max = 1; // TODO: Check the correctness of these values
+    double x_min = 0, y_min = 0; // TODO: Check the correctness of these values
+    double x_max = camera->horRes-1, y_max = camera->verRes-1; // TODO: z_max/min????
     if (visible(dx, x_min-v0.x, t_E, t_L) && visible(-dx, v0.x-x_max, t_E, t_L)
-        && visible(dy, y_min-v0.y, t_E, t_L) && visible(-dy, v0.y - y_max, t_E, t_L)
-        && visible(dz, z_min-v0.z, t_E, t_L) && visible(-dz, v0.z-z_max, t_E, t_L)) {
+        && visible(dy, y_min-v0.y, t_E, t_L) && visible(-dy, v0.y - y_max, t_E, t_L)) {
         /* At least some part of the line is visible to the camera */
         if (t_L < 1) {
             v1.x = v0.x + (dx * t_L);
@@ -186,7 +192,7 @@ void clipLine(Camera * camera, Vec4 & v0, Vec4 & v1) {
     }
 }
 
-void rasterizeLine(vector<vector<Color>> & image, Color * c0, Color * c1, Vec4 & v0, Vec4 & v1) { // TODO: add overloads to Color then come back and fix here
+void rasterizeLine(vector<vector<Color>> & image, Color * c0, Color * c1, Vec4 & v0, Vec4 & v1) {
     double dx = v1.x - v0.x;
     double dy = v1.y - v1.x;
     double d, incrAmount = 1;
@@ -197,14 +203,15 @@ void rasterizeLine(vector<vector<Color>> & image, Color * c0, Color * c1, Vec4 &
         /* Normal Midpoint Algorithm */
         if (v1.x < v0.x) {
             swap(v0, v1);
-            swap(c_0, c_1);
+//            swap(c_0, c_1);
+            c_0.swap(c_1); // TODO check if this is needed
         }
         if (v1.y < v0.y) {
             /* Make sure that line goes in negative direction in each iteration */
             incrAmount = -1;
         }
 
-        double y = v0.y;
+        int y = v0.y;
         c = c_0;
         d = (v0.y - v1.y) + (incrAmount * 0.5 * (v1.x - v0.x));
         dc = (c_1 - c_0) / (v1.x - v0.x);
@@ -230,7 +237,7 @@ void rasterizeLine(vector<vector<Color>> & image, Color * c0, Color * c1, Vec4 &
             incrAmount = -1;
         }
 
-        double x = v0.x;
+        int x = v0.x;
         c = c_0;
         d = (v1.x - v0.x) + (incrAmount * 0.5 * (v0.y - v1.y));
         dc = (c_1 - c_0) / (v1.y - v0.y);
@@ -302,12 +309,12 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
         Matrix4 M_cam_model = multiplyMatrixWithMatrix(M_cam, M_model); // m1*m2
         Matrix4 M_proj_cam_model = multiplyMatrixWithMatrix(M_proj, M_cam_model);
         for (auto & triangle : model->triangles) {
-            Vec3 * v0 = this->vertices[triangle.getFirstVertexId()];
-            Vec3 * v1 = this->vertices[triangle.getSecondVertexId()];
-            Vec3 * v2 = this->vertices[triangle.getThirdVertexId()];
-            Color * c0 = this->colorsOfVertices[triangle.getFirstVertexId()];
-            Color * c1 = this->colorsOfVertices[triangle.getSecondVertexId()];
-            Color * c2 = this->colorsOfVertices[triangle.getThirdVertexId()];
+            Vec3 * v0 = this->vertices[triangle.getFirstVertexId()-1];
+            Vec3 * v1 = this->vertices[triangle.getSecondVertexId()-1];
+            Vec3 * v2 = this->vertices[triangle.getThirdVertexId()-1];
+            Color * c0 = this->colorsOfVertices[v0->colorId-1];
+            Color * c1 = this->colorsOfVertices[v1->colorId-1];
+            Color * c2 = this->colorsOfVertices[v2->colorId-1];
 
             Vec4 projectedV0 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v0->x, v0->y, v0->z, 1, v0->colorId));
             Vec4 projectedV1 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v1->x, v1->y, v1->z, 1, v1->colorId));
