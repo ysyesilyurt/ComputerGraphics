@@ -19,15 +19,75 @@
 using namespace tinyxml2;
 using namespace std;
 
-Matrix4 calcModelingTransformations(Camera * camera, const vector<Translation*>& translations,
+Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Translation*>& translations,
         const vector<Rotation*>& rotations, const vector<Scaling*>& scalings) {
     // TODO: Implement dis -- GOKHAN
     // Do not forget uvw NORMALIZATIONS in operations ETC.!
-    Matrix4 M_model = Matrix4();
+
+    /* Create Modeling Transformation Matrix that is constructed with correct order of transformations and return it */
+    Matrix4 M_model = nullptr;
+    for (int i = 0; i < model.numberOfTransformations; ++i) {
+        if (model.transformationTypes[i] == 't') {
+            Translation * t = translations[model.transformationIds[i]-1]; // since transformations start from 1
+            double tMatrix[4][4] = {{1,0,0,t->tx},
+                                   {0,1,0,t->ty},
+                                   {0,0,1,t->tz},
+                                   {0,0,0,1}};
+            if (M_model)
+                M_model = multiplyMatrixWithMatrix(M_model, tMatrix);
+            else
+                M_model = tMatrix;
+        }
+        else if (model.transformationTypes[i] == 's') {
+            Scaling * s = scalings[model.transformationIds[i]-1]; // since transformations start from 1
+            // TODO IF ORIGIN PROBLEM THEN TRANSLATE ALSO !!
+            double sMatrix[4][4] = {{s->sx,0,0,0},
+                                    {0,s->sy,0,0},
+                                    {0,0,s->sz,0},
+                                    {0,0,0,1}};
+            if (M_model)
+                M_model = multiplyMatrixWithMatrix(M_model, sMatrix);
+            else
+                M_model = sMatrix;
+        }
+        else if (model.transformationTypes[i] == 'r') {
+            Rotation * r = rotations[model.transformationIds[i]-1]; // since transformations start from 1
+            /* First find ONB uvw and construct M(mMatrix) */
+            Vec3 u = Vec3(r->ux, r->uy, r->uz, -1), v, w;
+            double minComp = std::min(std::min(abs(r->ux), abs(r->uy)), abs(r->uz));
+            if (minComp == abs(r->ux))
+                v = Vec3(0, -1 * r->uz, r->uy, -1);
+            else if (minComp == abs(r->uy))
+                v = Vec3(-1 * r->uz, 0, r->ux, -1);
+            else if (minComp == abs(r->uz))
+                v = Vec3(-1 * r->ux, r->ux, 0, -1);
+            w = crossProductVec3(u, v);
+            // TODO IF ONB DOES NOT HAVE SAME ORIGIN WITH CAMERA THEN TRANSLATE ALSO !!
+            double mMatrix[4][4] = {{u.x,u.y,u.z,0},
+                                    {v.x,v.y,v.z,0},
+                                    {w.x,w.y,w.z,0},
+                                    {0,0,0,1}};
+            double mMatrix_inverse[4][4] = {{u.x,v.x,w.x,0},
+                                            {u.y,v.y,w.y,0},
+                                            {u.z,v.z,w.z,0},
+                                            {0,0,0,1}};
+            /* rMatrix is rotation along X axis since now u is aligned with X*/
+            double rMatrix[4][4] = {{1,0,0,0},
+                                    {0,cos(r->angle * M_PI/180),(-1) * sin(r->angle * M_PI/180),0},
+                                    {0,sin(r->angle * M_PI/180),cos(r->angle * M_PI/180),0},
+                                    {0,0,0,1}};
+            Matrix4 rot1 = multiplyMatrixWithMatrix(rMatrix, mMatrix);
+            Matrix4 rotRes = multiplyMatrixWithMatrix(mMatrix_inverse, rot1);
+            if (M_model)
+                M_model = multiplyMatrixWithMatrix(M_model, rotRes);
+            else
+                M_model = rotRes;
+        }
+    }
     return M_model;
 }
 
-Matrix4 calcCameraTransformation(Camera * camera) {
+Matrix4 calcCameraTransMatrix(Camera * camera) {
     double T[4][4] = {{1, 0, 0, -(camera->pos.x)},
                         {0, 1, 0, -(camera->pos.y)},
                         {0, 0, 1, -(camera->pos.z)},
@@ -39,7 +99,7 @@ Matrix4 calcCameraTransformation(Camera * camera) {
     return multiplyMatrixWithMatrix(Matrix4(T), Matrix4(R));
 }
 
-Matrix4 calcProjectionTransformation(Camera * camera, bool projType) {
+Matrix4 calcProjectionTransMatrix(Camera * camera, bool projType) {
     if (projType) {
         /* Return M_pers */
         double M_pers[4][4] = {{(2*camera->near)/(camera->right - camera->left), 0, (camera->right + camera->left) / (camera->right - camera->left), 0},
@@ -58,7 +118,7 @@ Matrix4 calcProjectionTransformation(Camera * camera, bool projType) {
     }
 }
 
-Matrix4 calcViewportTransformation(Camera * camera) {
+Matrix4 calcViewportTransMatrix(Camera * camera) {
     double M_viewport[4][4] = {{camera->horRes/2.0, 0, 0, (camera->horRes-1)/2.0},
                                {0, camera->verRes/2.0, 0, (camera->verRes-1)/2.0},
                                {0, 0, 0.5, 0.5},
@@ -68,11 +128,13 @@ Matrix4 calcViewportTransformation(Camera * camera) {
 
 bool isBackfaceCulled(Camera * camera, Vec4 & v0, Vec4 & v1, Vec4 & v2) {
     // TODO: DO VERTICES SENT HERE NEED TO BE PERSPECTIVE DIVIDED?
-
-    Vec3 edge01 = subtractVec3(v1, v0); // TODO: Vec4 -> Vec3 YAVUZ
-    Vec3 edge02 = subtractVec3(v2, v0);
+    Vec3 v_0 = Vec3(v0.x, v0.y, v0.z, v0.colorId);
+    Vec3 v_1 = Vec3(v1.x, v1.y, v1.z, v1.colorId);
+    Vec3 v_2 = Vec3(v2.x, v2.y, v2.z, v2.colorId);
+    Vec3 edge01 = subtractVec3(v_1, v_0);
+    Vec3 edge02 = subtractVec3(v_2, v_0);
     Vec3 normalVector = normalizeVec3(crossProductVec3(edge01, edge02));
-    double res = dotProductVec3(normalVector, v0); // Todo V0
+    double res = dotProductVec3(normalVector, v_0); // Todo V0
     return (res < 0);
 }
 
@@ -128,21 +190,24 @@ void rasterizeLine(vector<vector<Color>> & image, Color * c0, Color * c1, Vec4 &
     double dx = v1.x - v0.x;
     double dy = v1.y - v1.x;
     double d, incrAmount = 1;
-    Color dc, c = *c0;
+    Color dc, c, c_0 = *c0, c_1 = *c1;
 
     /* First Check if the slope is between 0 < m <= 1 */
     if (dy != 0 && dx != 0 && abs(dy) <= abs(dx)) {
         /* Normal Midpoint Algorithm */
         if (v1.x < v0.x) {
             swap(v0, v1);
+            swap(c_0, c_1);
         }
         if (v1.y < v0.y) {
+            /* Make sure that line goes in negative direction in each iteration */
             incrAmount = -1;
         }
 
-        int y = v0.y;
+        double y = v0.y;
+        c = c_0;
         d = (v0.y - v1.y) + (incrAmount * 0.5 * (v1.x - v0.x));
-        dc = (c1 - c0) / (v1.x - v0.x);
+        dc = (c_1 - c_0) / (v1.x - v0.x);
         for (int x = v0.x; x <= v1.x; x++) {
             image[x][y] = c.round();
             if (d * incrAmount < 0) { // choose NE
@@ -158,14 +223,17 @@ void rasterizeLine(vector<vector<Color>> & image, Color * c0, Color * c1, Vec4 &
         /* Modified Midpoint Algorithm for 1 < m < INF */
         if (v1.y < v0.y) {
             swap(v0, v1);
+            swap(c_0, c_1);
         }
         if (v1.x < v0.x) {
+            /* Make sure that line goes in negative direction in each iteration */
             incrAmount = -1;
         }
 
-        int x = v0.x;
+        double x = v0.x;
+        c = c_0;
         d = (v1.x - v0.x) + (incrAmount * 0.5 * (v0.y - v1.y));
-        dc = (c1 - c0) / (v1.y - v0.y);
+        dc = (c_1 - c_0) / (v1.y - v0.y);
 
         for (int y = v0.y; y <= v1.y; y++) {
             image[x][y] = c.round();
@@ -224,15 +292,15 @@ void rasterizeTriangle(vector<vector<Color>> & image, Color * c0, Color * c1, Co
     -> Helpers such as normalization, dot product etc. are given to us in Helpers.h/cpp
  */
 void Scene::forwardRenderingPipeline(Camera * camera) {
-    Matrix4 M_model = calcModelingTransformations(camera, this->translations, this->rotations, this->scalings);
-    Matrix4 M_cam = calcCameraTransformation(camera);
-    Matrix4 M_proj = calcProjectionTransformation(camera, this->projectionType);
-    Matrix4 M_viewport = calcViewportTransformation(camera); // Normally this matrix is 3x4 but in code it is 4x4 we keep this matrix's last row as 0 0 0 1
+    Matrix4 M_cam = calcCameraTransMatrix(camera);
+    Matrix4 M_proj = calcProjectionTransMatrix(camera, this->projectionType);
+    Matrix4 M_viewport = calcViewportTransMatrix(camera); // Normally this matrix is 3x4 but in code it is 4x4 we keep this matrix's last row as 0 0 0 1
 
     /* For each model apply these transformations + clip + cull then rasterize */
-    Matrix4 M_cam_model = multiplyMatrixWithMatrix(M_cam, M_model); // m1*m2
-    Matrix4 M_proj_cam_model = multiplyMatrixWithMatrix(M_proj, M_cam_model);
     for (auto & model : this->models) {
+        Matrix4 M_model = calcModelingTransMatrix(camera, *model, this->translations, this->rotations, this->scalings);
+        Matrix4 M_cam_model = multiplyMatrixWithMatrix(M_cam, M_model); // m1*m2
+        Matrix4 M_proj_cam_model = multiplyMatrixWithMatrix(M_proj, M_cam_model);
         for (auto & triangle : model->triangles) {
             Vec3 * v0 = this->vertices[triangle.getFirstVertexId()];
             Vec3 * v1 = this->vertices[triangle.getSecondVertexId()];
