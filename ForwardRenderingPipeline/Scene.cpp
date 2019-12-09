@@ -22,8 +22,7 @@ using namespace std;
 Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Translation*>& translations,
         const vector<Rotation*>& rotations, const vector<Scaling*>& scalings) {
     /* Create Modeling Transformation Matrix that is constructed with correct order of transformations and return it */
-    Matrix4 M_model;
-    bool unInitialized = true;
+    Matrix4 M_model = getIdentityMatrix();
     for (int i = 0; i < model.numberOfTransformations; ++i) {
         if (model.transformationTypes[i] == 't') {
             Translation * t = translations[model.transformationIds[i]-1]; // since transformations start from 1
@@ -31,12 +30,7 @@ Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Tra
                                    {0,1,0,t->ty},
                                    {0,0,1,t->tz},
                                    {0,0,0,1}};
-            if (!unInitialized)
-                M_model = multiplyMatrixWithMatrix(M_model, tMatrix);
-            else {
-                unInitialized = false;
-                M_model = tMatrix;
-            }
+            M_model = multiplyMatrixWithMatrix(M_model, tMatrix);
         }
         else if (model.transformationTypes[i] == 's') {
             Scaling * s = scalings[model.transformationIds[i]-1]; // since transformations start from 1
@@ -44,12 +38,7 @@ Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Tra
                                     {0,s->sy,0,0},
                                     {0,0,s->sz,0},
                                     {0,0,0,1}};
-            if (!unInitialized)
-                M_model = multiplyMatrixWithMatrix(M_model, sMatrix);
-            else {
-                unInitialized = false;
-                M_model = sMatrix;
-            }
+            M_model = multiplyMatrixWithMatrix(M_model, sMatrix);
         }
         else if (model.transformationTypes[i] == 'r') {
             Rotation * r = rotations[model.transformationIds[i]-1]; // since transformations start from 1
@@ -81,12 +70,10 @@ Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Tra
                                     {0,0,0,1}};
             Matrix4 rot1 = multiplyMatrixWithMatrix(rMatrix, mMatrix);
             Matrix4 rotRes = multiplyMatrixWithMatrix(mMatrix_inverse, rot1);
-            if (!unInitialized)
-                M_model = multiplyMatrixWithMatrix(M_model, rotRes);
-            else {
-                unInitialized = false;
-                M_model = rotRes;
-            }
+            M_model = multiplyMatrixWithMatrix(M_model, rotRes);
+        }
+        else {
+            fprintf(stderr, "Invalid Transformation Type!");
         }
     }
     return M_model;
@@ -101,14 +88,14 @@ Matrix4 calcCameraTransMatrix(Camera * camera) {
                       {camera->v.x, camera->v.y, camera->v.z, 0},
                       {camera->w.x, camera->w.y, camera->w.z, 0},
                       {0, 0, 0, 1}};
-    return multiplyMatrixWithMatrix(Matrix4(T), Matrix4(R));
+    return multiplyMatrixWithMatrix(R, T);
 }
 
 Matrix4 calcProjectionTransMatrix(Camera * camera, bool projType) {
     if (projType) {
         /* Return M_pers */
-        double M_pers[4][4] = {{(2*camera->near)/(camera->right - camera->left), 0, (camera->right + camera->left) / (camera->right - camera->left), 0},
-                               {0, (2*camera->near)/(camera->top - camera->bottom), (camera->top + camera->bottom) / (camera->top - camera->bottom), 0},
+        double M_pers[4][4] = {{(2*camera->near) / (camera->right - camera->left), 0, (camera->right + camera->left) / (camera->right - camera->left), 0},
+                               {0, (2*camera->near) / (camera->top - camera->bottom), (camera->top + camera->bottom) / (camera->top - camera->bottom), 0},
                                {0, 0, -((camera->far + camera->near) / (camera->far - camera->near)), -((2*camera->far*camera->near) / (camera->far - camera->near))},
                                {0, 0, -1, 0}};
         return Matrix4(M_pers);
@@ -172,8 +159,8 @@ void clipLine(Camera * camera, Vec4 & v0, Vec4 & v1) {
      * as a result v0 and v1 gets updated as needed */
     double t_E = 0, t_L = 1;
     double dx = v1.x - v0.x, dy = v1.y - v0.y, dz = v1.z - v0.z;
-    double x_min = 0, y_min = 0; // TODO: Check the correctness of these values
-    double x_max = camera->horRes-1, y_max = camera->verRes-1; // TODO: z_max/min????
+    double x_min = -1, y_min = -1; // TODO: x_min = 0 and x_max = horRes - 1?
+    double x_max = 1, y_max = 1; // TODO: z_max/min????
     if (visible(dx, x_min-v0.x, t_E, t_L) && visible(-dx, v0.x-x_max, t_E, t_L)
         && visible(dy, y_min-v0.y, t_E, t_L) && visible(-dy, v0.y - y_max, t_E, t_L)) {
         /* At least some part of the line is visible to the camera */
@@ -191,7 +178,7 @@ void clipLine(Camera * camera, Vec4 & v0, Vec4 & v1) {
 }
 
 void rasterizeLine(vector<vector<Color>> & image, Color * c0, Color * c1, Vec4 & v0, Vec4 & v1) {
-    // TODO: Rewrite this rasterization according to 8 cases
+//     TODO: Rewrite this rasterization according to 8 cases
 //    double dx = v1.x - v0.x;
 //    double dy = v1.y - v1.x;
 //    int d, incrAmount = 1;
@@ -257,6 +244,7 @@ void rasterizeLine(vector<vector<Color>> & image, Color * c0, Color * c1, Vec4 &
 //    }
 //    else {
 //        /* Slope is zero or undef -- Fail */
+//        fprintf(stderr, "Slope is undefined on point");
 //        return;
 //    }
 }
@@ -308,8 +296,8 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
     /* For each model apply these transformations + clip + cull then rasterize */
     for (auto & model : this->models) {
         Matrix4 M_model = calcModelingTransMatrix(camera, *model, this->translations, this->rotations, this->scalings);
-        Matrix4 M_cam_model = multiplyMatrixWithMatrix(M_cam, M_model); // m1*m2
-        Matrix4 M_proj_cam_model = multiplyMatrixWithMatrix(M_proj, M_cam_model);
+        Matrix4 M_cam_model = multiplyMatrixWithMatrix(M_cam, M_model); // Mcam * Mmodel
+        Matrix4 M_proj_cam_model = multiplyMatrixWithMatrix(M_proj, M_cam_model); // Mproj * Mcam * Mmodel
         for (auto & triangle : model->triangles) {
             Vec3 * v0 = this->vertices[triangle.getFirstVertexId()-1];
             Vec3 * v1 = this->vertices[triangle.getSecondVertexId()-1];
