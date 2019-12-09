@@ -153,9 +153,11 @@ bool visible(double den, double num, double & t_E, double & t_L) {
     return true;
 }
 
-void clipLine(Vec4 & v0, Vec4 & v1) { // TODO: fix this function and handle clipping inputs
+void clipLine(std::pair<Vec4, Color> & pair1, std::pair<Vec4, Color> & pair2) { // TODO: fix this function and handle clipping inputs
     /* Clips given line with Liang-Barsky Algorithm in 3D
      * as a result v0 and v1 gets updated as needed */
+    Vec4 v0 = pair1.first, v1 = pair2.first;
+    Color c0 = pair1.second, c1 = pair2.second;
     double t_E = 0, t_L = 1;
     double dx = v1.x - v0.x, dy = v1.y - v0.y, dz = v1.z - v0.z;
     double x_min = -1, y_min = -1, z_min = -1; // TODO: min/max values / x_min = 0 and x_max = horRes - 1?
@@ -164,7 +166,9 @@ void clipLine(Vec4 & v0, Vec4 & v1) { // TODO: fix this function and handle clip
         && visible(dy, y_min-v0.y, t_E, t_L) && visible(-dy, v0.y - y_max, t_E, t_L)
         && visible(dz, z_min-v0.z, t_E, t_L) && visible(-dz, v0.z-z_max, t_E, t_L)) {
         /* At least some part of the line is clipped */
-        if (t_L < 1) { // TODO: Find interpolated COLOR value of updated point and update it also accordingly
+        // TODO: Find interpolated COLOR value of updated point and update it also accordingly
+        // BEWARE: Pair passledim fonksiyona - artik c0 ve c1 rahat sekilde update edilebilir clipping olursa!!
+        if (t_L < 1) {
             v1.x = v0.x + (dx * t_L);
             v1.y = v0.y + (dy * t_L);
             v1.z = v0.z + (dz * t_L);
@@ -177,19 +181,19 @@ void clipLine(Vec4 & v0, Vec4 & v1) { // TODO: fix this function and handle clip
     }
 }
 
-void rasterizeLine(vector<vector<Color>> & image, const Color * c0, const Color * c1, Vec4 & v0, Vec4 & v1) {
+void rasterizeLine(vector<vector<Color>> & image, Vec4 & v0, Vec4 & v1, Color & c0, Color & c1) {
     // BEWARE: If needed: Rewrite this function for 8 distinct cases
     double dx = v1.x - v0.x;
     double dy = v1.y - v0.y;
     int d, incrAmount = 1;
-    Color dc, c, c_0 = *c0, c_1 = *c1;
+    Color dc, c;
 
     /* First Check if the slope is between 0 < m <= 1 */
     if (abs(dy) <= abs(dx)) {
         /* Normal Midpoint Algorithm */
         if (v1.x < v0.x) {
             swap(v0, v1);
-            swap(c_0, c_1);
+            swap(c0, c1);
         }
         if (v1.y < v0.y) {
             /* Make sure that line goes in negative direction in each iteration */
@@ -197,9 +201,9 @@ void rasterizeLine(vector<vector<Color>> & image, const Color * c0, const Color 
         }
 
         int y = v0.y;
-        c = c_0;
+        c = c0;
         d = (v0.y - v1.y) + (incrAmount * 0.5 * (v1.x - v0.x));
-        dc = (c_1 - c_0) / (v1.x - v0.x);
+        dc = (c1 - c0) / (v1.x - v0.x);
         for (int x = v0.x; x <= v1.x; x++) {
             image[x][y] = c.round();
             if (d * incrAmount < 0) { // choose NE
@@ -215,7 +219,7 @@ void rasterizeLine(vector<vector<Color>> & image, const Color * c0, const Color 
         /* Modified Midpoint Algorithm for 1 < m < INF */
         if (v1.y < v0.y) {
             swap(v0, v1);
-            swap(c_0, c_1);
+            swap(c0, c1);
         }
         if (v1.x < v0.x) {
             /* Make sure that line goes in negative direction in each iteration */
@@ -223,9 +227,9 @@ void rasterizeLine(vector<vector<Color>> & image, const Color * c0, const Color 
         }
 
         int x = v0.x;
-        c = c_0;
+        c = c0;
         d = (v1.x - v0.x) + (incrAmount * 0.5 * (v0.y - v1.y));
-        dc = (c_1 - c_0) / (v1.y - v0.y);
+        dc = (c1 - c0) / (v1.y - v0.y);
 
         for (int y = v0.y; y <= v1.y; y++) {
             image[x][y] = c.round();
@@ -244,7 +248,8 @@ double f_(double x, double y, double x_n, double y_n, double x_m, double y_m){
     return (x * (y_n - y_m)) + (y * (x_m - x_n)) + (x_n * y_m) - (y_n * x_m);
 }
 
-void rasterizeTriangle(vector<vector<Color>> & image, Color * c0, Color * c1, Color * c2, Vec4 & v0, Vec4 & v1, Vec4 & v2) {
+void rasterizeTriangle(vector<vector<Color>> & image, const Color * c0, const Color * c1, const Color * c2,
+        Vec4 & v0, Vec4 & v1, Vec4 & v2) {
     int x_min = min(min(v0.x, v1.x), v2.x);
     int x_max = max(max(v0.x, v1.x), v2.x);
     int y_min = min(min(v0.y, v1.y), v2.y);
@@ -260,7 +265,7 @@ void rasterizeTriangle(vector<vector<Color>> & image, Color * c0, Color * c1, Co
             gamma = f_(x,y, v0.x, v0.y, v1.x, v1.y) / f_(v2.x,v2.y, v0.x,v0.y, v1.x,v1.y); // L01
 
             if(alpha>=0 && beta>=0 && gamma>=0){
-                c = ((*c0)*alpha) + ((*c1)*beta) + ((*c2)*gamma);
+                c = ((*c0) * alpha) + ((*c1) * beta) + ((*c2) * gamma);
                 image[x][y] = c.round();
             }
         }
@@ -312,12 +317,12 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
         Matrix4 M_cam_model = multiplyMatrixWithMatrix(M_cam, M_model); // Mcam * Mmodel
         Matrix4 M_proj_cam_model = multiplyMatrixWithMatrix(M_proj, M_cam_model); // Mproj * Mcam * Mmodel
         for (auto & triangle : model->triangles) {
-            Vec3 * v0 = this->vertices[triangle.getFirstVertexId()-1];
-            Vec3 * v1 = this->vertices[triangle.getSecondVertexId()-1];
-            Vec3 * v2 = this->vertices[triangle.getThirdVertexId()-1];
-            Color * c0 = this->colorsOfVertices[v0->colorId-1];
-            Color * c1 = this->colorsOfVertices[v1->colorId-1];
-            Color * c2 = this->colorsOfVertices[v2->colorId-1];
+            const Vec3 * v0 = this->vertices[triangle.getFirstVertexId()-1];
+            const Vec3 * v1 = this->vertices[triangle.getSecondVertexId()-1];
+            const Vec3 * v2 = this->vertices[triangle.getThirdVertexId()-1];
+            const Color * c0 = this->colorsOfVertices[v0->colorId-1];
+            const Color * c1 = this->colorsOfVertices[v1->colorId-1];
+            const Color * c2 = this->colorsOfVertices[v2->colorId-1];
 
             Vec4 projectedV0 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v0->x, v0->y, v0->z, 1, v0->colorId));
             Vec4 projectedV1 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v1->x, v1->y, v1->z, 1, v1->colorId));
@@ -333,46 +338,52 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
                 /* Wireframe mode */
 
                 /* Clipping Phase */
-                // Create copies of vertices since their coords may change as clipping continues
-                Vec4 _projectedV0 = projectedV0;
-                Vec4 _projectedV1 = projectedV1;
-                Vec4 _projectedV2 = projectedV2;
+                /* Construct Lines to be clipped
+                 * For each line create 2 pairs<Vec4, Color> which represent the initial and final points of this line
+                 * Pair's Vec4 holds the point of the vertice - can be updated during clipping
+                 * Pair's Color holds the color of the vertice - can be updated during clipping
+                 * */
 
-                /* Construct Lines to be clipped */
                 // Line-1 => L01
-                clipLine(projectedV0, projectedV1);
+                std::pair <Vec4, Color> L01_pair1 = std::make_pair(projectedV0, *c0);
+                std::pair <Vec4, Color> L01_pair2 = std::make_pair(projectedV1, *c1);
+                clipLine(L01_pair1, L01_pair2);
 
                 // Line-2 => L12
-                clipLine(_projectedV1, projectedV2);
+                std::pair <Vec4, Color> L12_pair1 = std::make_pair(projectedV1, *c1);
+                std::pair <Vec4, Color> L12_pair2 = std::make_pair(projectedV2, *c2);
+                clipLine(L12_pair1, L12_pair2);
 
                 // Line-3 => L20
-                clipLine(_projectedV2, _projectedV0);
+                std::pair <Vec4, Color> L20_pair1 = std::make_pair(projectedV2, *c2);
+                std::pair <Vec4, Color> L20_pair2 = std::make_pair(projectedV0, *c0);
+                clipLine(L20_pair1, L20_pair2);
 
                 /* Perform Perspective Division */
-                _projectedV0 /= _projectedV0.t;
-                _projectedV1 /= _projectedV1.t;
-                _projectedV2 /= _projectedV2.t;
-                projectedV0 /= projectedV0.t;
-                projectedV1 /= projectedV1.t;
-                projectedV2 /= projectedV2.t;
+                L01_pair1.first /= L01_pair1.first.t;
+                L01_pair2.first /= L01_pair2.first.t;
+                L12_pair1.first /= L12_pair1.first.t;
+                L12_pair2.first /= L12_pair2.first.t;
+                L20_pair1.first /= L20_pair1.first.t;
+                L20_pair2.first /= L20_pair2.first.t;
 
                 /* Viewport Transformation Phase */
                 // L01
-                Vec4 viewportV0 = multiplyMatrixWithVec4(M_viewport, projectedV0);
-                Vec4 viewportV1 = multiplyMatrixWithVec4(M_viewport, projectedV1);
+                L01_pair1.first = multiplyMatrixWithVec4(M_viewport, L01_pair1.first);
+                L01_pair2.first = multiplyMatrixWithVec4(M_viewport, L01_pair2.first);
 
                 // L12
-                Vec4 _viewportV1 = multiplyMatrixWithVec4(M_viewport, _projectedV1);
-                Vec4 viewportV2 = multiplyMatrixWithVec4(M_viewport, projectedV2);
+                L12_pair1.first = multiplyMatrixWithVec4(M_viewport, L12_pair1.first);
+                L12_pair2.first = multiplyMatrixWithVec4(M_viewport, L12_pair2.first);
 
                 // L20
-                Vec4 _viewportV2 = multiplyMatrixWithVec4(M_viewport, _projectedV2);
-                Vec4 _viewportV0 = multiplyMatrixWithVec4(M_viewport, _projectedV0);
+                L20_pair1.first = multiplyMatrixWithVec4(M_viewport, L20_pair1.first);
+                L20_pair2.first = multiplyMatrixWithVec4(M_viewport, L20_pair2.first);
 
                 /* Final step of FRP - Rasterize the Line and fill the image for this model */
-                rasterizeLine(this->image, c0, c1, viewportV0, viewportV1); // L01
-                rasterizeLine(this->image, c1, c2, _viewportV1, viewportV2); // L12
-                rasterizeLine(this->image, c2, c0, _viewportV2, _viewportV0); // L20
+                rasterizeLine(this->image, L01_pair1.first, L01_pair2.first, L01_pair1.second, L01_pair2.second); // L01
+                rasterizeLine(this->image, L12_pair1.first, L12_pair2.first, L12_pair1.second, L12_pair2.second); // L12
+                rasterizeLine(this->image, L20_pair1.first, L20_pair2.first, L20_pair1.second, L20_pair2.second); // L20
             }
             else {
                 /* Solid mode */
