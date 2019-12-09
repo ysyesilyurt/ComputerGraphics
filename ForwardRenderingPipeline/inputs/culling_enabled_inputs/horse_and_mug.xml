@@ -5,13 +5,13 @@
 	<Cameras>
 		<Camera id="1">
 			<Position>-12 3.5 1</Position>
-			<Gaze>1 -0.2 0</Gaze>
+			<Gaze>1 -0.2 -0.1</Gaze>
 			<Up>0 1 0</Up>
 			<ImagePlane>-1 1 -0.5 0.5 3 300 1500 750</ImagePlane>
 			<OutputName>horse_and_mug_1.ppm</OutputName>
 		</Camera>
 		<Camera id="2">
-			<Position>-4 4 11</Position>
+			<Position>-5 4 13</Position>
 			<Gaze>0.6 -0.3 -1</Gaze>
 			<Up>0 1 0</Up>
 			<ImagePlane>-1 1 -0.5 0.5 3 300 1500 750</ImagePlane>
