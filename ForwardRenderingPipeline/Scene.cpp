@@ -160,10 +160,10 @@ void clipLine(std::pair<Vec4, Color> & pair1, std::pair<Vec4, Color> & pair2) { 
     Color c0 = pair1.second, c1 = pair2.second;
     double t_E = 0, t_L = 1;
     double dx = v1.x - v0.x, dy = v1.y - v0.y, dz = v1.z - v0.z;
-    double x_min = -1, y_min = -1, z_min = -1; // TODO: min/max values / x_min = 0 and x_max = horRes - 1?
-    double x_max = 1, y_max = 1, z_max = 1;
+    double x_min = -1, y_min = -1, z_min = -1; // TODO: SLIDE SAYS: CLIP AGAINST -W < x,y,z < W
+    double x_max = 1, y_max = 1, z_max = 1; // TODO: eger -1 e 1 olacaksa min ve max Perspective division clippingden once yapilmali ki CVV ye gore clipleyelim
     if (visible(dx, x_min-v0.x, t_E, t_L) && visible(-dx, v0.x-x_max, t_E, t_L)
-        && visible(dy, y_min-v0.y, t_E, t_L) && visible(-dy, v0.y - y_max, t_E, t_L)
+        && visible(dy, y_min-v0.y, t_E, t_L) && visible(-dy, v0.y-y_max, t_E, t_L)
         && visible(dz, z_min-v0.z, t_E, t_L) && visible(-dz, v0.z-z_max, t_E, t_L)) {
         /* At least some part of the line is clipped */
         // TODO: Find interpolated COLOR value of updated point and update it also accordingly
@@ -176,7 +176,7 @@ void clipLine(std::pair<Vec4, Color> & pair1, std::pair<Vec4, Color> & pair2) { 
         if (t_E > 0) {
             v0.x = v0.x + (dx * t_E);
             v0.y = v0.y + (dy * t_E);
-            v0.z = v0.z + (dz * t_E);
+            v0.z = v0.z + (dz * t_E); // WARNING: Slaytta dy * t_E denmis cok buyuk ihtimal yanlis yazilmis
         }
     }
 }
@@ -360,7 +360,7 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
                 clipLine(L20_pair1, L20_pair2);
 
                 /* Perform Perspective Division */
-                L01_pair1.first /= L01_pair1.first.t;
+                L01_pair1.first /= L01_pair1.first.t; // TODO: Check if t == 0?
                 L01_pair2.first /= L01_pair2.first.t;
                 L12_pair1.first /= L12_pair1.first.t;
                 L12_pair2.first /= L12_pair2.first.t;
@@ -389,7 +389,7 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
                 /* Solid mode */
 
                 /* Perform Perspective Division */
-                projectedV0 /= projectedV0.t;
+                projectedV0 /= projectedV0.t; // TODO: Check if t == 0?
                 projectedV1 /= projectedV1.t;
                 projectedV2 /= projectedV2.t;
 
