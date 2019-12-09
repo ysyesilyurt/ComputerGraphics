@@ -15,7 +15,7 @@ public:
     Vec4(double x, double y, double z, double t, int colorId);
     Vec4(const Vec4 &other);
 
-    Vec4 & operator/=(double); // TODO TELL ASSISTANT ABOUT THIS ALSO!!!!!
+    Vec4 & operator/=(double);
     double getElementAt(int index);
 
     friend std::ostream& operator<<(std::ostream& os, const Vec4& v);

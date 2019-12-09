@@ -30,7 +30,7 @@ Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Tra
                                    {0,1,0,t->ty},
                                    {0,0,1,t->tz},
                                    {0,0,0,1}};
-            M_model = multiplyMatrixWithMatrix(M_model, tMatrix);
+            M_model = multiplyMatrixWithMatrix(tMatrix, M_model);
         }
         else if (model.transformationTypes[i] == 's') {
             Scaling * s = scalings[model.transformationIds[i]-1]; // since transformations start from 1
@@ -38,7 +38,7 @@ Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Tra
                                     {0,s->sy,0,0},
                                     {0,0,s->sz,0},
                                     {0,0,0,1}};
-            M_model = multiplyMatrixWithMatrix(M_model, sMatrix);
+            M_model = multiplyMatrixWithMatrix(sMatrix, M_model);
         }
         else if (model.transformationTypes[i] == 'r') {
             Rotation * r = rotations[model.transformationIds[i]-1]; // since transformations start from 1
@@ -50,7 +50,7 @@ Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Tra
             else if (minComp == abs(r->uy))
                 v = Vec3(-1 * r->uz, 0, r->ux, -1);
             else if (minComp == abs(r->uz))
-                v = Vec3(-1 * r->ux, r->ux, 0, -1);
+                v = Vec3(-1 * r->uy, r->ux, 0, -1);
             w = crossProductVec3(u, v);
             // Do not forget to normalize v and w
             v = normalizeVec3(v);
@@ -70,7 +70,7 @@ Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Tra
                                     {0,0,0,1}};
             Matrix4 rot1 = multiplyMatrixWithMatrix(rMatrix, mMatrix);
             Matrix4 rotRes = multiplyMatrixWithMatrix(mMatrix_inverse, rot1);
-            M_model = multiplyMatrixWithMatrix(M_model, rotRes);
+            M_model = multiplyMatrixWithMatrix(rotRes, M_model);
         }
         else {
             fprintf(stderr, "Invalid Transformation Type!");
@@ -114,19 +114,18 @@ Matrix4 calcViewportTransMatrix(Camera * camera) {
     double M_viewport[4][4] = {{camera->horRes/2.0, 0, 0, (camera->horRes-1)/2.0},
                                {0, camera->verRes/2.0, 0, (camera->verRes-1)/2.0},
                                {0, 0, 0.5, 0.5},
-                               {0, 0, 0, 1}}; // TODO: We do not need last line semantically but need in code!
+                               {0, 0, 0, 1}}; // WARNING: We do not need last line semantically but need in code!
     return Matrix4(M_viewport);
 }
 
-bool isBackfaceCulled(Camera * camera, Vec4 & v0, Vec4 & v1, Vec4 & v2) {
-    // TODO: DO VERTICES SENT HERE NEED TO BE PERSPECTIVE DIVIDED?
+bool isBackfaceCulled(Vec4 & v0, Vec4 & v1, Vec4 & v2) {
     Vec3 v_0 = Vec3(v0.x, v0.y, v0.z, v0.colorId);
     Vec3 v_1 = Vec3(v1.x, v1.y, v1.z, v1.colorId);
     Vec3 v_2 = Vec3(v2.x, v2.y, v2.z, v2.colorId);
     Vec3 edge01 = subtractVec3(v_1, v_0);
     Vec3 edge02 = subtractVec3(v_2, v_0);
     Vec3 normalVector = normalizeVec3(crossProductVec3(edge01, edge02));
-    double res = dotProductVec3(normalVector, v_0); // Todo V0 -- camera? -> ok.
+    double res = dotProductVec3(normalVector, v_0); // View Vector = v_0 - origin
     return (res < 0);
 }
 
@@ -154,17 +153,18 @@ bool visible(double den, double num, double & t_E, double & t_L) {
     return true;
 }
 
-void clipLine(Camera * camera, Vec4 & v0, Vec4 & v1) {
+void clipLine(Vec4 & v0, Vec4 & v1) { // TODO: fix this function and handle clipping inputs
     /* Clips given line with Liang-Barsky Algorithm in 3D
      * as a result v0 and v1 gets updated as needed */
     double t_E = 0, t_L = 1;
     double dx = v1.x - v0.x, dy = v1.y - v0.y, dz = v1.z - v0.z;
-    double x_min = -1, y_min = -1; // TODO: x_min = 0 and x_max = horRes - 1?
-    double x_max = 1, y_max = 1; // TODO: z_max/min????
+    double x_min = -1, y_min = -1, z_min = -1; // TODO: min/max values / x_min = 0 and x_max = horRes - 1?
+    double x_max = 1, y_max = 1, z_max = 1;
     if (visible(dx, x_min-v0.x, t_E, t_L) && visible(-dx, v0.x-x_max, t_E, t_L)
-        && visible(dy, y_min-v0.y, t_E, t_L) && visible(-dy, v0.y - y_max, t_E, t_L)) {
-        /* At least some part of the line is visible to the camera */
-        if (t_L < 1) {
+        && visible(dy, y_min-v0.y, t_E, t_L) && visible(-dy, v0.y - y_max, t_E, t_L)
+        && visible(dz, z_min-v0.z, t_E, t_L) && visible(-dz, v0.z-z_max, t_E, t_L)) {
+        /* At least some part of the line is clipped */
+        if (t_L < 1) { // TODO: Find interpolated COLOR value of updated point and update it also accordingly
             v1.x = v0.x + (dx * t_L);
             v1.y = v0.y + (dy * t_L);
             v1.z = v0.z + (dz * t_L);
@@ -177,80 +177,100 @@ void clipLine(Camera * camera, Vec4 & v0, Vec4 & v1) {
     }
 }
 
-void rasterizeLine(vector<vector<Color>> & image, Color * c0, Color * c1, Vec4 & v0, Vec4 & v1) {
-//     TODO: Rewrite this rasterization according to 8 cases
-//    double dx = v1.x - v0.x;
-//    double dy = v1.y - v1.x;
-//    int d, incrAmount = 1;
-//    Color dc, c, c_0 = *c0, c_1 = *c1;
-//
-//    /* First Check if the slope is between 0 < m <= 1 */
-//    if (dy != 0 && dx != 0 && abs(dy) <= abs(dx)) {
-//        /* Normal Midpoint Algorithm */
-//        if (v1.x < v0.x) {
-//            swap(v0, v1);
-////            swap(c_0, c_1);
-//            c_0.swap(c_1); // TODO check if this is needed
-//        }
-//        if (v1.y < v0.y) {
-//            /* Make sure that line goes in negative direction in each iteration */
-//            incrAmount = -1;
-//        }
-//
-//        int y = v0.y;
-//        c = c_0;
-//        d = (v0.y - v1.y) + (incrAmount * 0.5 * (v1.x - v0.x));
-//        dc = (c_1 - c_0) / (v1.x - v0.x);
-//        for (int x = v0.x; x <= v1.x; x++) {
-//            cout << "slope is <= 1 and " << x << " " << y << "\n";
-//            image[x][y] = c.round();
-//            if (d * incrAmount < 0) { // choose NE
-//                y += incrAmount;
-//                d += (v0.y - v1.y) + (incrAmount * (v1.x - v0.x));
-//            }
-//            else // choose E
-//                d += (v0.y - v1.y);
-//            c = c + dc;
-//        }
-//    }
-//    else if (dy != 0 && dx != 0 && abs(dy) > abs(dx)) {
-//        /* Modified Midpoint Algorithm for 1 < m < INF */
-//        if (v1.y < v0.y) {
-//            swap(v0, v1);
+void rasterizeLine(vector<vector<Color>> & image, const Color * c0, const Color * c1, Vec4 & v0, Vec4 & v1) {
+    // TODO: Rewrite this rasterization according to 8 cases
+    double dx = v1.x - v0.x;
+    double dy = v1.y - v0.y;
+    int d, incrAmount = 1;
+    Color dc, c, c_0 = *c0, c_1 = *c1;
+
+    /* First Check if the slope is between 0 < m <= 1 */
+    if (dy != 0 && dx != 0 && abs(dy) <= abs(dx)) {
+        /* Normal Midpoint Algorithm */
+        if (v1.x < v0.x) {
+            swap(v0, v1);
 //            swap(c_0, c_1);
-//        }
-//        if (v1.x < v0.x) {
-//            /* Make sure that line goes in negative direction in each iteration */
-//            incrAmount = -1;
-//        }
-//
-//        int x = v0.x;
-//        c = c_0;
-//        d = (v1.x - v0.x) + (incrAmount * 0.5 * (v0.y - v1.y));
-//        dc = (c_1 - c_0) / (v1.y - v0.y);
-//
-//        for (int y = v0.y; y <= v1.y; y++) {
-//            cout << x << " " << y << "\n";
-//            image[x][y] = c.round();
-//            cout << "done for " << c.round() << "\n";
-//            if (d * incrAmount > 0) {
-//                x += incrAmount;
-//                d += (v1.x - v0.x) + (incrAmount * (v0.y - v1.y));
-//            }
-//            else
-//                d += (v1.x - v0.x);
-//            c = c + dc;
-//        }
-//    }
-//    else {
-//        /* Slope is zero or undef -- Fail */
-//        fprintf(stderr, "Slope is undefined on point");
-//        return;
-//    }
+            c_0.swap(c_1); // TODO check if this is needed
+        }
+        if (v1.y < v0.y) {
+            /* Make sure that line goes in negative direction in each iteration */
+            incrAmount = -1;
+        }
+
+        int y = v0.y;
+        c = c_0;
+        d = (v0.y - v1.y) + (incrAmount * 0.5 * (v1.x - v0.x));
+        dc = (c_1 - c_0) / (v1.x - v0.x);
+        for (int x = v0.x; x <= v1.x; x++) {
+            image[x][y] = c.round();
+            if (d * incrAmount < 0) { // choose NE
+                y += incrAmount;
+                d += (v0.y - v1.y) + (incrAmount * (v1.x - v0.x));
+            }
+            else // choose E
+                d += (v0.y - v1.y);
+            c = c + dc;
+        }
+    }
+    else if (dy != 0 && dx != 0 && abs(dy) > abs(dx)) {
+        /* Modified Midpoint Algorithm for 1 < m < INF */
+        if (v1.y < v0.y) {
+            swap(v0, v1);
+            swap(c_0, c_1);
+        }
+        if (v1.x < v0.x) {
+            /* Make sure that line goes in negative direction in each iteration */
+            incrAmount = -1;
+        }
+
+        int x = v0.x;
+        c = c_0;
+        d = (v1.x - v0.x) + (incrAmount * 0.5 * (v0.y - v1.y));
+        dc = (c_1 - c_0) / (v1.y - v0.y);
+
+        for (int y = v0.y; y <= v1.y; y++) {
+            image[x][y] = c.round();
+            if (d * incrAmount > 0) {
+                x += incrAmount;
+                d += (v1.x - v0.x) + (incrAmount * (v0.y - v1.y));
+            }
+            else
+                d += (v1.x - v0.x);
+            c = c + dc;
+        }
+    }
+    else {
+        /* Slope is zero or undef -- Fail */
+        fprintf(stderr, "Slope is undefined on point");
+        return;
+    }
+}
+
+double f_(double x, double y, double x_n, double y_n, double x_m, double y_m){
+    return (x * (y_n - y_m)) + (y * (x_m - x_n)) + (x_n * y_m) - (y_n * x_m);
 }
 
 void rasterizeTriangle(vector<vector<Color>> & image, Color * c0, Color * c1, Color * c2, Vec4 & v0, Vec4 & v1, Vec4 & v2) {
-    // TODO: Implement dis using Barrycentric Coordinates and fill the image's related pixels ~ GOKHAN
+    int x_min = min(min(v0.x, v1.x), v2.x);
+    int x_max = max(max(v0.x, v1.x), v2.x);
+    int y_min = min(min(v0.y, v1.y), v2.y);
+    int y_max = max(max(v0.y, v1.y), v2.y);
+
+    double alpha,beta,gamma;
+    Color c;
+
+    for(int y=y_min; y<=y_max; ++y){
+        for(int x=x_min; x<=x_max; ++x){
+            alpha = f_(x,y, v1.x, v1.y, v2.x, v2.y) / f_(v0.x,v0.y, v1.x,v1.y, v2.x,v2.y); // L12
+            beta = f_(x,y, v2.x, v2.y, v0.x, v0.y) / f_(v1.x,v1.y, v2.x,v2.y, v0.x,v0.y); // L20
+            gamma = f_(x,y, v0.x, v0.y, v1.x, v1.y) / f_(v2.x,v2.y, v0.x,v0.y, v1.x,v1.y); // L01
+
+            if(alpha>=0 && beta>=0 && gamma>=0){
+                c = ((*c0)*alpha) + ((*c1)*beta) + ((*c2)*gamma);
+                image[x][y] = c.round();
+            }
+        }
+    }
 }
 
 
@@ -294,7 +314,7 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
     Matrix4 M_viewport = calcViewportTransMatrix(camera); // Normally this matrix is 3x4 but in code it is 4x4 we keep this matrix's last row as 0 0 0 1
 
     /* For each model apply these transformations + clip + cull then rasterize */
-    for (auto & model : this->models) {
+    for (const auto & model : this->models) {
         Matrix4 M_model = calcModelingTransMatrix(camera, *model, this->translations, this->rotations, this->scalings);
         Matrix4 M_cam_model = multiplyMatrixWithMatrix(M_cam, M_model); // Mcam * Mmodel
         Matrix4 M_proj_cam_model = multiplyMatrixWithMatrix(M_proj, M_cam_model); // Mproj * Mcam * Mmodel
@@ -311,7 +331,7 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
             Vec4 projectedV2 = multiplyMatrixWithVec4(M_proj_cam_model, Vec4(v2->x, v2->y, v2->z, 1, v2->colorId));
 
             /* Culling Phase if enabled */
-            if (this->cullingEnabled && isBackfaceCulled(camera, projectedV0, projectedV1, projectedV2)) {
+            if (this->cullingEnabled && isBackfaceCulled(projectedV0, projectedV1, projectedV2)) {
                 /* If backface culling is enabled and model is backfacing then just continue, do not render this model */
                 continue;
             }
@@ -327,13 +347,13 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
 
                 /* Construct Lines to be clipped */
                 // Line-1 => L01
-                clipLine(camera, projectedV0, projectedV1);
+                clipLine(projectedV0, projectedV1);
 
                 // Line-2 => L12
-                clipLine(camera, _projectedV1, projectedV2);
+                clipLine(_projectedV1, projectedV2);
 
                 // Line-3 => L20
-                clipLine(camera, _projectedV2, _projectedV0);
+                clipLine(_projectedV2, _projectedV0);
 
                 /* Perform Perspective Division */
                 _projectedV0 /= _projectedV0.t;
@@ -345,7 +365,7 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
 
                 /* Viewport Transformation Phase */
                 // L01
-                Vec4 viewportV0 = multiplyMatrixWithVec4(M_viewport, projectedV0); // TODO beware 3x4 by 4x1
+                Vec4 viewportV0 = multiplyMatrixWithVec4(M_viewport, projectedV0);
                 Vec4 viewportV1 = multiplyMatrixWithVec4(M_viewport, projectedV1);
 
                 // L12
@@ -370,7 +390,7 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
                 projectedV2 /= projectedV2.t;
 
                 /* Viewport Transformation Phase */
-                Vec4 viewportV0 = multiplyMatrixWithVec4(M_viewport, projectedV0); // TODO beware 3x4 by 4x1
+                Vec4 viewportV0 = multiplyMatrixWithVec4(M_viewport, projectedV0);
                 Vec4 viewportV1 = multiplyMatrixWithVec4(M_viewport, projectedV1);
                 Vec4 viewportV2 = multiplyMatrixWithVec4(M_viewport, projectedV2);
 
