@@ -52,17 +52,12 @@ Color Color::operator/(double num) {
     return c;
 }
 
-Color & Color::round(){
-    r = (int)(r + 0.5);
-    g = (int)(g + 0.5);
-    b = (int)(b + 0.5);
-    return *this;
-}
-
-void Color::swap(Color & rhs) {
-    std::swap(r,rhs.r);
-    std::swap(g,rhs.g);
-    std::swap(b,rhs.b);
+Color Color::round(){
+    Color c;
+    c.r = (int)(r + 0.5);
+    c.g = (int)(g + 0.5);
+    c.b = (int)(b + 0.5);
+    return c;
 }
 
 ostream& operator<<(ostream& os, const Color& c)

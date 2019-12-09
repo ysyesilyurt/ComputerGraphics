@@ -73,7 +73,7 @@ Matrix4 calcModelingTransMatrix(Camera * camera, Model & model, const vector<Tra
             M_model = multiplyMatrixWithMatrix(rotRes, M_model);
         }
         else {
-            fprintf(stderr, "Invalid Transformation Type!");
+            fprintf(stderr, "Invalid Transformation Type!\n");
         }
     }
     return M_model;
@@ -178,19 +178,18 @@ void clipLine(Vec4 & v0, Vec4 & v1) { // TODO: fix this function and handle clip
 }
 
 void rasterizeLine(vector<vector<Color>> & image, const Color * c0, const Color * c1, Vec4 & v0, Vec4 & v1) {
-    // TODO: Rewrite this rasterization according to 8 cases
+    // BEWARE: If needed: Rewrite this function for 8 distinct cases
     double dx = v1.x - v0.x;
     double dy = v1.y - v0.y;
     int d, incrAmount = 1;
     Color dc, c, c_0 = *c0, c_1 = *c1;
 
     /* First Check if the slope is between 0 < m <= 1 */
-    if (dy != 0 && dx != 0 && abs(dy) <= abs(dx)) {
+    if (abs(dy) <= abs(dx)) {
         /* Normal Midpoint Algorithm */
         if (v1.x < v0.x) {
             swap(v0, v1);
-//            swap(c_0, c_1);
-            c_0.swap(c_1); // TODO check if this is needed
+            swap(c_0, c_1);
         }
         if (v1.y < v0.y) {
             /* Make sure that line goes in negative direction in each iteration */
@@ -212,7 +211,7 @@ void rasterizeLine(vector<vector<Color>> & image, const Color * c0, const Color 
             c = c + dc;
         }
     }
-    else if (dy != 0 && dx != 0 && abs(dy) > abs(dx)) {
+    else if (abs(dy) > abs(dx)) {
         /* Modified Midpoint Algorithm for 1 < m < INF */
         if (v1.y < v0.y) {
             swap(v0, v1);
@@ -238,11 +237,6 @@ void rasterizeLine(vector<vector<Color>> & image, const Color * c0, const Color 
                 d += (v1.x - v0.x);
             c = c + dc;
         }
-    }
-    else {
-        /* Slope is zero or undef -- Fail */
-        fprintf(stderr, "Slope is undefined on point");
-        return;
     }
 }
 
@@ -278,7 +272,6 @@ void rasterizeTriangle(vector<vector<Color>> & image, Color * c0, Color * c1, Co
 	Transformations, clipping, culling, rasterization are done here.
 	You can define helper functions inside Scene class implementation.
 */
-// TODO: DO NOT FORGET TO Provide a Makefile!~ YAVUZ
 /**
  * Our Overall Rendering Pipeline - ysyesilyurt
     1- Implement Modeling Transformation Matrix Calculation => Mmodel
@@ -311,7 +304,7 @@ void rasterizeTriangle(vector<vector<Color>> & image, Color * c0, Color * c1, Co
 void Scene::forwardRenderingPipeline(Camera * camera) {
     Matrix4 M_cam = calcCameraTransMatrix(camera);
     Matrix4 M_proj = calcProjectionTransMatrix(camera, this->projectionType);
-    Matrix4 M_viewport = calcViewportTransMatrix(camera); // Normally this matrix is 3x4 but in code it is 4x4 we keep this matrix's last row as 0 0 0 1
+    Matrix4 M_viewport = calcViewportTransMatrix(camera);
 
     /* For each model apply these transformations + clip + cull then rasterize */
     for (const auto & model : this->models) {
