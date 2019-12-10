@@ -249,11 +249,20 @@ double f_(double x, double y, double x_n, double y_n, double x_m, double y_m){
 }
 
 void rasterizeTriangle(vector<vector<Color>> & image, const Color * c0, const Color * c1, const Color * c2,
-        Vec4 & v0, Vec4 & v1, Vec4 & v2) {
-    int x_min = min(min(v0.x, v1.x), v2.x);
-    int x_max = max(max(v0.x, v1.x), v2.x);
-    int y_min = min(min(v0.y, v1.y), v2.y);
-    int y_max = max(max(v0.y, v1.y), v2.y);
+        Vec4 & v0, Vec4 & v1, Vec4 & v2, double nx, double ny) {
+    int x_min = min(min(min(v0.x, nx), v1.x), v2.x);
+    int x_max = max(max(max(v0.x, 0.), v1.x), v2.x);
+    int y_min = min(min(min(v0.y, ny), v1.y), v2.y);
+    int y_max = max(max(max(v0.y, 0.), v1.y), v2.y);
+
+    if (x_min < 0 || y_min < 0) // TODO: This works for horse_and_mug_perspective but not for orth one, try to fix that too
+        return;
+
+//    int x_min = min(min(v0.x, v1.x), v2.x) >= 0 ? min(min(v0.x, v1.x), v2.x) : 0;
+//    int y_min = min(min(v0.y, v1.y), v2.y) >= 0 ? min(min(v0.y, v1.y), v2.y) : 0;
+//
+//    int x_max = max(max(v0.x, v1.x), v2.x) < 0 ? 0 : max(max(v0.x, v1.x), v2.x) > nx ? nx : max(max(v0.x, v1.x), v2.x);
+//    int y_max = max(max(v0.y, v1.y), v2.y) < 0 ? 0 : max(max(v0.y, v1.y), v2.y) > ny ? ny : max(max(v0.y, v1.y), v2.y);
 
     double alpha,beta,gamma;
     Color c;
@@ -399,7 +408,7 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
                 Vec4 viewportV2 = multiplyMatrixWithVec4(M_viewport, projectedV2);
 
                 /* Final step of FRP - Rasterize the Triangle and fill the image for this model */
-                rasterizeTriangle(this->image, c0, c1, c2, viewportV0, viewportV1, viewportV2);
+                rasterizeTriangle(this->image, c0, c1, c2, viewportV0, viewportV1, viewportV2, camera->horRes, camera->verRes);
             }
         }
     }
