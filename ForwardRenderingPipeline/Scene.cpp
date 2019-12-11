@@ -153,7 +153,7 @@ bool visible(double den, double num, double & t_E, double & t_L) {
     return true;
 }
 
-bool clipLine(std::pair<Vec4, Color> & pair1, std::pair<Vec4, Color> & pair2) { // TODO: fix this function and handle clipping inputs
+bool clipLine(std::pair<Vec4, Color> & pair1, std::pair<Vec4, Color> & pair2) {
     /* Clips given line with Liang-Barsky Algorithm in 3D
      * as a result v0 and v1 gets updated as needed */
     bool isVisible = false;
@@ -163,15 +163,13 @@ bool clipLine(std::pair<Vec4, Color> & pair1, std::pair<Vec4, Color> & pair2) { 
     double dx = v1.x - v0.x, dy = v1.y - v0.y, dz = v1.z - v0.z;
     Color dc = c1 - c0;
     double x_min = -1, y_min = -1, z_min = -1;
-    // TODO: SLIDE SAYS: CLIP AGAINST -W < x,y,z < W
+
     double x_max = 1, y_max = 1, z_max = 1;
-    // TODO: eger -1 e 1 olacaksa min ve max Perspective division clippingden once yapilmali ki CVV ye gore clipleyelim
     if (visible(dx, x_min-v0.x, t_E, t_L) && visible(-dx, v0.x-x_max, t_E, t_L)
         && visible(dy, y_min-v0.y, t_E, t_L) && visible(-dy, v0.y-y_max, t_E, t_L)
         && visible(dz, z_min-v0.z, t_E, t_L) && visible(-dz, v0.z-z_max, t_E, t_L)) {
         isVisible = true;
         /* At least some part of the line is clipped */
-        // TODO: Find interpolated COLOR value of updated point and update it also accordingly
         // BEWARE: Pair passledim fonksiyona - artik c0 ve c1 rahat sekilde update edilebilir clipping olursa!!
         if (t_L < 1) {
             v1.x = v0.x + (dx * t_L);
@@ -263,22 +261,16 @@ double f_(double x, double y, double x_n, double y_n, double x_m, double y_m){
 }
 
 void rasterizeTriangle(vector<vector<Color>> & image, const Color * c0, const Color * c1, const Color * c2,
-        Vec4 & v0, Vec4 & v1, Vec4 & v2, double nx, double ny) {
+        Vec4 & v0, Vec4 & v1, Vec4 & v2, int nx, int ny) {
 
 
-    int x_min = min(min(min(v0.x, nx), v1.x), v2.x);
-    int x_max = max(max(max(v0.x, 0.), v1.x), v2.x);
-    int y_min = min(min(min(v0.y, ny), v1.y), v2.y);
-    int y_max = max(max(max(v0.y, 0.), v1.y), v2.y);
+    int x_min = min(min(v0.x, v1.x), v2.x) >= 0 ? min(min(v0.x, v1.x), v2.x) : 0;
+    x_min = x_min <= nx-1 ? x_min: nx-1;
+    int y_min = min(min(v0.y, v1.y), v2.y) >= 0 ? min(min(v0.y, v1.y), v2.y) : 0;
+    y_min = y_min <= ny-1 ? y_min: ny-1;
 
-    if (x_min < 0 || y_min < 0) // TODO: This works for horse_and_mug_perspective but not for orth one, try to fix that too
-        return;
-
-//    int x_min = min(min(v0.x, v1.x), v2.x) >= 0 ? min(min(v0.x, v1.x), v2.x) : 0;
-//    int y_min = min(min(v0.y, v1.y), v2.y) >= 0 ? min(min(v0.y, v1.y), v2.y) : 0;
-//
-//    int x_max = max(max(v0.x, v1.x), v2.x) < 0 ? 0 : max(max(v0.x, v1.x), v2.x) > nx ? nx : max(max(v0.x, v1.x), v2.x);
-//    int y_max = max(max(v0.y, v1.y), v2.y) < 0 ? 0 : max(max(v0.y, v1.y), v2.y) > ny ? ny : max(max(v0.y, v1.y), v2.y);
+    int x_max = max(max(v0.x, v1.x), v2.x) < 0 ? 0 : max(max(v0.x, v1.x), v2.x) > nx-1 ? nx-1 : max(max(v0.x, v1.x), v2.x);
+    int y_max = max(max(v0.y, v1.y), v2.y) < 0 ? 0 : max(max(v0.y, v1.y), v2.y) > ny-1 ? ny-1 : max(max(v0.y, v1.y), v2.y);
 
     double alpha,beta,gamma;
     Color c;
@@ -372,7 +364,7 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
                 // Line-1 => L01
                 std::pair <Vec4, Color> L01_pair1 = std::make_pair(projectedV0, *c0);
                 std::pair <Vec4, Color> L01_pair2 = std::make_pair(projectedV1, *c1);
-                L01_pair1.first /= L01_pair1.first.t; // TODO: Check if t == 0?
+                L01_pair1.first /= L01_pair1.first.t;
                 L01_pair2.first /= L01_pair2.first.t;
                 bool L01_visibility = clipLine(L01_pair1, L01_pair2);
 
@@ -420,7 +412,7 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
                 /* Solid mode */
 
                 /* Perform Perspective Division */
-                projectedV0 /= projectedV0.t; // TODO: Check if t == 0?
+                projectedV0 /= projectedV0.t;
                 projectedV1 /= projectedV1.t;
                 projectedV2 /= projectedV2.t;
 
