@@ -170,7 +170,6 @@ bool clipLine(std::pair<Vec4, Color> & pair1, std::pair<Vec4, Color> & pair2) {
         && visible(dz, z_min-v0.z, t_E, t_L) && visible(-dz, v0.z-z_max, t_E, t_L)) {
         isVisible = true;
         /* At least some part of the line is clipped */
-        // BEWARE: Pair passledim fonksiyona - artik c0 ve c1 rahat sekilde update edilebilir clipping olursa!!
         if (t_L < 1) {
             v1.x = v0.x + (dx * t_L);
             v1.y = v0.y + (dy * t_L);
@@ -180,7 +179,7 @@ bool clipLine(std::pair<Vec4, Color> & pair1, std::pair<Vec4, Color> & pair2) {
         if (t_E > 0) {
             v0.x = v0.x + (dx * t_E);
             v0.y = v0.y + (dy * t_E);
-            v0.z = v0.z + (dz * t_E); // WARNING: Slaytta dy * t_E denmis cok buyuk ihtimal yanlis yazilmis
+            v0.z = v0.z + (dz * t_E);
             c0 = c0 + (dc * t_E);
         }
     }
@@ -194,7 +193,6 @@ bool clipLine(std::pair<Vec4, Color> & pair1, std::pair<Vec4, Color> & pair2) {
 }
 
 void rasterizeLine(vector<vector<Color>> & image, Vec4 & v0, Vec4 & v1, Color & c0, Color & c1) {
-    // BEWARE: If needed: Rewrite this function for 8 distinct cases
     double dx = v1.x - v0.x;
     double dy = v1.y - v0.y;
     int d, incrAmount = 1;
@@ -262,7 +260,6 @@ double f_(double x, double y, double x_n, double y_n, double x_m, double y_m){
 
 void rasterizeTriangle(vector<vector<Color>> & image, const Color * c0, const Color * c1, const Color * c2,
         Vec4 & v0, Vec4 & v1, Vec4 & v2, int nx, int ny) {
-
 
     int x_min = min(min(v0.x, v1.x), v2.x) >= 0 ? min(min(v0.x, v1.x), v2.x) : 0;
     x_min = x_min <= nx-1 ? x_min: nx-1;
@@ -354,7 +351,7 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
             if (!model->type) {
                 /* Wireframe mode */
 
-                /* Clipping Phase */
+                /* Perform Perspective Division */
                 /* Construct Lines to be clipped
                  * For each line create 2 pairs<Vec4, Color> which represent the initial and final points of this line
                  * Pair's Vec4 holds the point of the vertice - can be updated during clipping
@@ -366,26 +363,23 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
                 std::pair <Vec4, Color> L01_pair2 = std::make_pair(projectedV1, *c1);
                 L01_pair1.first /= L01_pair1.first.t;
                 L01_pair2.first /= L01_pair2.first.t;
-                bool L01_visibility = clipLine(L01_pair1, L01_pair2);
 
                 // Line-2 => L12
                 std::pair <Vec4, Color> L12_pair1 = std::make_pair(projectedV1, *c1);
                 std::pair <Vec4, Color> L12_pair2 = std::make_pair(projectedV2, *c2);
                 L12_pair1.first /= L12_pair1.first.t;
                 L12_pair2.first /= L12_pair2.first.t;
-                bool L12_visibility = clipLine(L12_pair1, L12_pair2);
 
                 // Line-3 => L20
                 std::pair <Vec4, Color> L20_pair1 = std::make_pair(projectedV2, *c2);
                 std::pair <Vec4, Color> L20_pair2 = std::make_pair(projectedV0, *c0);
                 L20_pair1.first /= L20_pair1.first.t;
                 L20_pair2.first /= L20_pair2.first.t;
+
+                /* Clipping Phase */
+                bool L01_visibility = clipLine(L01_pair1, L01_pair2);
+                bool L12_visibility = clipLine(L12_pair1, L12_pair2);
                 bool L20_visibility = clipLine(L20_pair1, L20_pair2);
-
-                /* Perform Perspective Division */
-
-
-
 
                 /* Viewport Transformation Phase */
                 // L01
