@@ -153,18 +153,23 @@ bool visible(double den, double num, double & t_E, double & t_L) {
     return true;
 }
 
-void clipLine(std::pair<Vec4, Color> & pair1, std::pair<Vec4, Color> & pair2) { // TODO: fix this function and handle clipping inputs
+bool clipLine(std::pair<Vec4, Color> & pair1, std::pair<Vec4, Color> & pair2) { // TODO: fix this function and handle clipping inputs
     /* Clips given line with Liang-Barsky Algorithm in 3D
      * as a result v0 and v1 gets updated as needed */
+    bool isVisible = false;
     Vec4 v0 = pair1.first, v1 = pair2.first;
     Color c0 = pair1.second, c1 = pair2.second;
     double t_E = 0, t_L = 1;
     double dx = v1.x - v0.x, dy = v1.y - v0.y, dz = v1.z - v0.z;
-    double x_min = -1, y_min = -1, z_min = -1; // TODO: SLIDE SAYS: CLIP AGAINST -W < x,y,z < W
-    double x_max = 1, y_max = 1, z_max = 1; // TODO: eger -1 e 1 olacaksa min ve max Perspective division clippingden once yapilmali ki CVV ye gore clipleyelim
+    Color dc = c1 - c0;
+    double x_min = -1, y_min = -1, z_min = -1;
+    // TODO: SLIDE SAYS: CLIP AGAINST -W < x,y,z < W
+    double x_max = 1, y_max = 1, z_max = 1;
+    // TODO: eger -1 e 1 olacaksa min ve max Perspective division clippingden once yapilmali ki CVV ye gore clipleyelim
     if (visible(dx, x_min-v0.x, t_E, t_L) && visible(-dx, v0.x-x_max, t_E, t_L)
         && visible(dy, y_min-v0.y, t_E, t_L) && visible(-dy, v0.y-y_max, t_E, t_L)
         && visible(dz, z_min-v0.z, t_E, t_L) && visible(-dz, v0.z-z_max, t_E, t_L)) {
+        isVisible = true;
         /* At least some part of the line is clipped */
         // TODO: Find interpolated COLOR value of updated point and update it also accordingly
         // BEWARE: Pair passledim fonksiyona - artik c0 ve c1 rahat sekilde update edilebilir clipping olursa!!
@@ -172,13 +177,22 @@ void clipLine(std::pair<Vec4, Color> & pair1, std::pair<Vec4, Color> & pair2) { 
             v1.x = v0.x + (dx * t_L);
             v1.y = v0.y + (dy * t_L);
             v1.z = v0.z + (dz * t_L);
+            c1 = c0 + (dc * t_L);
         }
         if (t_E > 0) {
             v0.x = v0.x + (dx * t_E);
             v0.y = v0.y + (dy * t_E);
             v0.z = v0.z + (dz * t_E); // WARNING: Slaytta dy * t_E denmis cok buyuk ihtimal yanlis yazilmis
+            c0 = c0 + (dc * t_E);
         }
     }
+
+    pair1.first = v0;
+    pair1.second = c0;
+    pair2.first = v1;
+    pair2.second = c1;
+
+    return isVisible;
 }
 
 void rasterizeLine(vector<vector<Color>> & image, Vec4 & v0, Vec4 & v1, Color & c0, Color & c1) {
@@ -250,6 +264,8 @@ double f_(double x, double y, double x_n, double y_n, double x_m, double y_m){
 
 void rasterizeTriangle(vector<vector<Color>> & image, const Color * c0, const Color * c1, const Color * c2,
         Vec4 & v0, Vec4 & v1, Vec4 & v2, double nx, double ny) {
+
+
     int x_min = min(min(min(v0.x, nx), v1.x), v2.x);
     int x_max = max(max(max(v0.x, 0.), v1.x), v2.x);
     int y_min = min(min(min(v0.y, ny), v1.y), v2.y);
@@ -356,25 +372,28 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
                 // Line-1 => L01
                 std::pair <Vec4, Color> L01_pair1 = std::make_pair(projectedV0, *c0);
                 std::pair <Vec4, Color> L01_pair2 = std::make_pair(projectedV1, *c1);
-                clipLine(L01_pair1, L01_pair2);
+                L01_pair1.first /= L01_pair1.first.t; // TODO: Check if t == 0?
+                L01_pair2.first /= L01_pair2.first.t;
+                bool L01_visibility = clipLine(L01_pair1, L01_pair2);
 
                 // Line-2 => L12
                 std::pair <Vec4, Color> L12_pair1 = std::make_pair(projectedV1, *c1);
                 std::pair <Vec4, Color> L12_pair2 = std::make_pair(projectedV2, *c2);
-                clipLine(L12_pair1, L12_pair2);
+                L12_pair1.first /= L12_pair1.first.t;
+                L12_pair2.first /= L12_pair2.first.t;
+                bool L12_visibility = clipLine(L12_pair1, L12_pair2);
 
                 // Line-3 => L20
                 std::pair <Vec4, Color> L20_pair1 = std::make_pair(projectedV2, *c2);
                 std::pair <Vec4, Color> L20_pair2 = std::make_pair(projectedV0, *c0);
-                clipLine(L20_pair1, L20_pair2);
-
-                /* Perform Perspective Division */
-                L01_pair1.first /= L01_pair1.first.t; // TODO: Check if t == 0?
-                L01_pair2.first /= L01_pair2.first.t;
-                L12_pair1.first /= L12_pair1.first.t;
-                L12_pair2.first /= L12_pair2.first.t;
                 L20_pair1.first /= L20_pair1.first.t;
                 L20_pair2.first /= L20_pair2.first.t;
+                bool L20_visibility = clipLine(L20_pair1, L20_pair2);
+
+                /* Perform Perspective Division */
+
+
+
 
                 /* Viewport Transformation Phase */
                 // L01
@@ -390,9 +409,12 @@ void Scene::forwardRenderingPipeline(Camera * camera) {
                 L20_pair2.first = multiplyMatrixWithVec4(M_viewport, L20_pair2.first);
 
                 /* Final step of FRP - Rasterize the Line and fill the image for this model */
-                rasterizeLine(this->image, L01_pair1.first, L01_pair2.first, L01_pair1.second, L01_pair2.second); // L01
-                rasterizeLine(this->image, L12_pair1.first, L12_pair2.first, L12_pair1.second, L12_pair2.second); // L12
-                rasterizeLine(this->image, L20_pair1.first, L20_pair2.first, L20_pair1.second, L20_pair2.second); // L20
+                if(L01_visibility)
+                    rasterizeLine(this->image, L01_pair1.first, L01_pair2.first, L01_pair1.second, L01_pair2.second); // L01
+                if(L12_visibility)
+                    rasterizeLine(this->image, L12_pair1.first, L12_pair2.first, L12_pair1.second, L12_pair2.second); // L12
+                if(L20_visibility)
+                    rasterizeLine(this->image, L20_pair1.first, L20_pair2.first, L20_pair1.second, L20_pair2.second); // L20
             }
             else {
                 /* Solid mode */
