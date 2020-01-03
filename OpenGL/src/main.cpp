@@ -169,9 +169,9 @@ void setUniforms() {
 void render() {
 
 	/* First clear all buffers */
-	// 	glClearColor(0,0,0,1); ??
-	//	glClearDepth(1.0f); ??
-	glClearColor(0.4f, 0.4f, 0.3f, 1.0f); // WARNING: WHY THOSE VALUES?
+	glClearColor(0,0,0,1);
+	glClearDepth(1.0f); // TODO: DONT KNOW WE NEED?
+//	glClearColor(0.4f, 0.4f, 0.3f, 1.0f); // WARNING: WHY THOSE VALUES?
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	/* Now render the frame */
@@ -227,7 +227,7 @@ int main(int argc, char * argv[]) {
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 	 */
 
-	window = glfwCreateWindow(windowX, windowY, "CENG477 - HW3_FLAT", nullptr, nullptr);
+	window = glfwCreateWindow(windowX, windowY, "CENG477 - HW3", nullptr, nullptr);
 
 	if (!window) {
 		fprintf(stderr, "Could not create window, exitting..");
@@ -236,7 +236,7 @@ int main(int argc, char * argv[]) {
 	}
 	glfwMakeContextCurrent(window);
 
-	glViewport(0,0,600,600);
+	glViewport(0,0,windowX,windowY);
 
 	GLenum err = glewInit();
 	if (err != GLEW_OK) {
