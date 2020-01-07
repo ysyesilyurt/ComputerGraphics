@@ -29,7 +29,7 @@ void main() {
   vec4 kd = vec4(1.0, 1.0, 1.0, 1.0); // reflectance coeff. for diffuse
   vec4 Is = vec4(1.0, 1.0, 1.0, 1.0); // light color for specular
   vec4 ks = vec4(1.0, 1.0, 1.0, 1.0); // reflectance coeff. for specular
-  int specExp = 100; // specular exponent
+  int exponent = 100; // specular exponent
 
   // compute ambient component
   vec3 ambient = (ka * Ia).xyz;
@@ -42,7 +42,7 @@ void main() {
   
   // compute specular component
   vec3 reflected = reflect(-ToLightVector, vertexNormal);
-  float spec = pow(max(dot(reflected, ToCameraVector), 0.0f), specExp);
+  float spec = pow(max(dot(reflected, ToCameraVector), 0.0f), exponent);
   vec3 specular = spec * (Is * ks).xyz;
   // specular = vec3(0.0f, 0.0f, 0.0f);
 

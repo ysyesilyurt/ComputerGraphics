@@ -10,7 +10,7 @@ uniform vec3 cameraPosition;
 uniform float heightFactor;
 
 // Texture-related data
-uniform sampler2D rgbTexture;
+uniform sampler2D rgbTexture; // TODO: get a height texture and this and USE THEM ACCORDINGLY
 uniform int textureWidth; // TODO: CHANGE BELOW acc. to names of these uniform vars
 uniform int textureHeight;
 
@@ -22,7 +22,7 @@ out vec3 ToCameraVector; // Vector from Vertex to Camera;
 
 float get_height(in vec2 xy) {
     vec4 color = texture(rgbTexture, xy);
-    float height = 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
+    float height = 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b; // color.r
     return height * heightFactor;
 }
 

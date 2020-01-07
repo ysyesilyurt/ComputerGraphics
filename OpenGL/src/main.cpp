@@ -21,7 +21,7 @@ std::vector<int> indices;
 std::vector<Vertex> vertices;
 
 /* Texture variables */
-int textureWidth, textureHeight;
+int textureWidth, textureHeight, heightTextureWidth, heightTextureHeight;
 
 /* Window variables */
 static GLFWwindow * window = nullptr;
@@ -80,7 +80,7 @@ void initializeVertices() {
 void initializeIndices() {
 	/* Initialize indices per pixel, be careful about the winding order! */
 	int size = (textureWidth + 1) * (textureHeight + 1);
-	for (int i = textureWidth + 2; i < size; i++) {
+	for (int i = textureWidth + 2; i < size; i++) { // TODO: REFACTOR
 		/* Each Pixel consists of 2 triangles */
 
 		if (i % (textureWidth + 1) == 0) {
@@ -133,17 +133,17 @@ void initBuffers() {
 void setupGeometry() {
 
 	/* Initialize Cam vectors first */
-	pos = glm::vec3(textureWidth / 2.0f, textureWidth / 10.0f, - textureWidth / 4.0f);
+	pos = glm::vec3(textureWidth / 2.0f, textureWidth / 10.0f, -textureWidth / 4.0f);
 	gaze = glm::vec3(0.0f, 0.0f, 1.0f);
-	up = glm::vec3(0.0f, 1.0f, 0.0f); // warning: 0,0,1?
+	up = glm::vec3(0.0f, 1.0f, 0.0f); // Warning: up vector?
+//	glm::vec3 camera_cross = cross(camera_up, camera_gaze); // TODO: HEEEY! dont we need cross
 
 	/* Now Set MVP */
 	M_model = glm::mat4(1.0f); // Will not change again
-	M_view = glm::lookAt(pos, pos + gaze, up); // Will be updated during flying
+	M_view = glm::lookAt(pos, pos + gaze, up); // Will be updated during flying TODO: pos + gaze * 0.1f ??
 	// ... a perspective projection with an angle of 45 degrees with the aspect ratio of 1,
 	// ... near and far plane will be 0.1 and 1000 respectively
-	M_projection = glm::perspective(glm::radians(45.0f),
-			1.0f, 0.1f, 1000.0f); // Will be updated during flying
+	M_projection = glm::perspective(45.0f, 1.0f, 0.1f, 1000.0f); // Will be updated during flying
 
 	MVP = M_projection * M_view * M_model;
 }
@@ -183,8 +183,8 @@ void render() {
 
 	// Then update the position of the camera
 	pos += camSpeed * gaze;
-	M_view = glm::lookAt(pos, pos + gaze, up);
-	M_projection = glm::perspective(glm::radians(45.0f), 1.0f, 0.1f, 1000.0f); // TODO: Check if this statement is necessary or not since the value does not change?
+	M_view = glm::lookAt(pos, pos + gaze, up); // Will be updated during flying
+	M_projection = glm::perspective(45.0f, 1.0f, 0.1f, 1000.0f); // TODO: Check if this statement is necessary or not since the value does not change?
 	MVP = M_projection * M_view * M_model;
 
 	// Do not forget the update the uniforms of geometry too
@@ -193,7 +193,7 @@ void render() {
 	glUniform1f(height_location, heightFactor);
 
 	// Finally draw the scene using indices..
-	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, 0);
+	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
 }
 
 
@@ -214,18 +214,18 @@ int main(int argc, char * argv[]) {
 		exit(-1);
 	}
 
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // BEWARE: IMPORTANT!
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
+//	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+//	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+//	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // BEWARE: IMPORTANT!
+//	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 
-	/* TODO: GUY'S..
-	 * 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+//	 TODO: GUY'S..
+	  	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 		glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
-	 */
+
 
 	window = glfwCreateWindow(windowX, windowY, "CENG477 - HW3", nullptr, nullptr);
 
@@ -236,7 +236,7 @@ int main(int argc, char * argv[]) {
 	}
 	glfwMakeContextCurrent(window);
 
-	glViewport(0,0,windowX,windowY);
+	glViewport(0,0, windowX, windowY);
 
 	GLenum err = glewInit();
 	if (err != GLEW_OK) {
@@ -247,7 +247,8 @@ int main(int argc, char * argv[]) {
 
 //	glfwSetFramebufferSizeCallback(window, resizeCallback); FOR RESIZE CALLBACK
 	initShaders();
-	initTexture(argv[1], & textureWidth, & textureHeight);
+//	initTexture(argv[1], &heightTextureWidth, &heightTextureHeight);
+	initTexture(argv[1], &textureWidth, &textureHeight);
 
 	initBuffers();
 	setupGeometry();

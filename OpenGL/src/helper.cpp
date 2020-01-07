@@ -83,7 +83,7 @@ bool readDataFromFile(const std::string& fileName, std::string &data) {
     return true;
 }
 
-void initTexture(char *filename,int *w, int *h)
+void initTexture(char *filename, int *w, int *h)
 {
     int width, height;
 
@@ -123,7 +123,7 @@ void initTexture(char *filename,int *w, int *h)
     /* allocate memory to hold the uncompressed image */
     raw_image = (unsigned char*)malloc( cinfo.output_width*cinfo.output_height*cinfo.num_components );
     /* now actually read the jpeg into the raw buffer */
-    row_pointer[0] = (unsigned char *)malloc( cinfo.output_width*cinfo.num_components );
+    row_pointer[0] = (unsigned char *) malloc( cinfo.output_width*cinfo.num_components);
     /* read one scan line at a time */
     while( cinfo.output_scanline < cinfo.image_height )
     {
