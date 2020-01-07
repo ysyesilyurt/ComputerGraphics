@@ -31,24 +31,40 @@ int windowY = 1000;
 /* Geometry variables */
 glm::vec3 pos, gaze, up;
 glm::mat4 MVP, M_model, M_view, M_projection;
-float camSpeed = 0.0f;
-float heightFactor = 10.0f;
+glm::vec3 light_pos;
+float camSpeed = 0.0;
+float heightFactor = 10.0;
 // TODO: Initial values of the pitch and yaw
-float pitch = 45.0f;
-float yaw = 90.0f;
-float fovy = 45.0f;
-float aspectRatio = 1.0f;
-float near = 0.1f;
-float far = 1000.0f;
+float pitch = 45.0;
+float yaw = 90.0;
+float fovy = 45.0;
+float aspectRatio = 1.0;
+float near = 0.1;
+float far = 1000.0;
 
 /* Uniform variables */ // TODO: Later alter the names of these and in below
-int MVP_location;
-int height_location;
-int tex_w_location ;
-int tex_h_location;
-int cam_pos_location;
-int heightmap_location;
-int texture_location;
+int MVP_location, height_location, tex_w_location, tex_h_location, cam_pos_location,
+heightmap_location, texture_location, light_pos_location;
+
+/* Key flags */
+bool heightFactor_increase = false;
+bool heightFactor_decrease = false;
+bool pitch_increase = false;
+bool pitch_decrease = false;
+bool yaw_increase = false;
+bool yaw_decrease = false;
+bool stop_cam = false;
+bool camSpeed_increase = false;
+bool camSpeed_decrease = false;
+bool move_map_left = false;
+bool move_map_right = false;
+bool rollback_to_initial = false;
+bool move_light_left = false;
+bool move_light_right = false;
+bool move_light_up = false;
+bool move_light_down = false;
+bool light_y_increase = false;
+bool light_y_decrease = false;
 
 void cleanUp() {
 	// Disable vertex arrays at the end
@@ -68,17 +84,17 @@ void cleanUp() {
 }
 
 void initializeVertices() {
-	const float dx = 1.0f / textureWidth;
-	const float dz = 1.0f / textureHeight;
+	const float dx = 1.0 / textureWidth;
+	const float dz = 1.0 / textureHeight;
 
 	for (int z = 0; z < textureHeight + 1; z++) {
 		for (int x = 0; x < textureWidth + 1; x++) {
 			Vertex vertex;
-			vertex.position = glm::vec3(x, 0.0f, z); // y-coords of the vertices will come the from vertex shader from the corresponding texture color(only R channel) on the heightmap image
-			vertex.normal = glm::vec3(0.0f); // TODO::::: IF NOT NEEDED IN VERTEX SHADER etc. REMOVE FROM HERE AND EVERYWHERE..
-			vertex.tex_coord = glm::vec2(1.0f - x * dx, 1.0f - z * dz); // fetch(p, q).(1 – dx).(1 – dy)
+			vertex.position = glm::vec3(x, 0.0, z); // y-coords of the vertices will come the from vertex shader from the corresponding texture color(only R channel) on the heightmap image
+			vertex.normal = glm::vec3(0.0); // TODO::::: IF NOT NEEDED IN VERTEX SHADER etc. REMOVE FROM HERE AND EVERYWHERE..
+			vertex.tex_coord = glm::vec2(1.0 - x * dx, 1.0 - z * dz);
 
-			vertices.push_back(std::move(vertex)); // TODO: check the highlight effects
+			vertices.push_back(vertex); // TODO: check the highlight effects
 		}
 	}
 }
@@ -139,20 +155,22 @@ void initBuffers() {
 void setupGeometry() {
 
 	/* Initialize Cam vectors first */
-//	pos = glm::vec3(textureWidth / 2.0f, textureWidth / 2.0f, -textureWidth / 2.5f);
-	pos = glm::vec3(textureWidth / 2.0f, textureWidth / 10.0f, -textureWidth / 4.0f);
-	gaze = glm::vec3(0.0f, 0.0f, 1.0f);
-	up = glm::vec3(0.0f, 1.0f, 0.0f); // Warning: up vector?
+//	pos = glm::vec3(textureWidth / 2.0, textureWidth / 2.0, -textureWidth / 2.5f);
+	pos = glm::vec3(textureWidth / 2.0, textureWidth / 10.0, -textureWidth / 4.0);
+	gaze = glm::vec3(0.0, 0.0, 1.0);
+	up = glm::vec3(0.0, 1.0, 0.0); // Warning: up vector?
 //	glm::vec3 camera_cross = cross(camera_up, camera_gaze); // TODO: HEEEY! dont we need cross
 
 	/* Now Set MVP */
-	M_model = glm::mat4(1.0f); // Will not change again
+	M_model = glm::mat4(1.0); // Will not change again
 	M_view = glm::lookAt(pos, pos + gaze, up); // Will be updated during flying TODO: pos + gaze * 0.1f ??
 	// ... a perspective projection with an angle of 45 degrees with the aspect ratio of 1,
 	// ... near and far plane will be 0.1 and 1000 respectively
 	M_projection = glm::perspective(fovy, aspectRatio, near, far); // Will be updated during flying
-
 	MVP = M_projection * M_view * M_model;
+
+	/* Set initial Light Position */
+	light_pos = glm::vec3(textureWidth / 2.0, 100, textureHeight / 2.0);
 }
 
 void setUniforms() {
@@ -169,8 +187,11 @@ void setUniforms() {
 	tex_h_location = glGetUniformLocation(idProgramShader, "textureHeight");
 	glUniform1i(tex_h_location, textureHeight);
 
-	cam_pos_location = glGetUniformLocation(idProgramShader, "cameraPosition");
+	cam_pos_location = glGetUniformLocation(idProgramShader, "cameraPos");
 	glUniform3fv(cam_pos_location, 1, glm::value_ptr(pos));
+
+	light_pos_location = glGetUniformLocation(idProgramShader, "lightPos");
+	glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
 
 	heightmap_location = glGetUniformLocation(idProgramShader, "heightMapTexture");
 	glUniform1i(heightmap_location, 0);
@@ -183,20 +204,20 @@ void render() {
 
 	/* First clear all buffers */
 	glClearColor(0,0,0,1);
-	glClearDepth(1.0f); // TODO: DONT KNOW WE NEED?
-//	glClearColor(0.4f, 0.4f, 0.3f, 1.0f); // WARNING: WHY THOSE VALUES?
+	glClearDepth(1.0); // TODO: DONT KNOW WE NEED?
+//	glClearColor(0.4f, 0.4f, 0.3f, 1.0); // WARNING: WHY THOSE VALUES?
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	/* Now render the frame */
 	// First update the gaze acc. to new values of yaw and pitch
 	gaze.x = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
-	gaze.y = sin(glm::radians(pitch - 45.0f));
+	gaze.y = sin(glm::radians(pitch - 45.0));
 	gaze.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
 	gaze = glm::normalize(gaze); // do not forget the normalize the gaze
 
 	// Then update the position of the camera
 	pos += camSpeed * gaze;
-	M_view = glm::lookAt(pos, pos + gaze, up); // Will be updated during flying
+	M_view = glm::lookAt(pos, pos + gaze, up); // gluLookAt(eye, center, up)
 	M_projection = glm::perspective(fovy, aspectRatio, near, far); // Will be updated during flying
 	MVP = M_projection * M_view * M_model;
 
@@ -209,6 +230,254 @@ void render() {
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
 }
 
+void toggleScreens() {
+	static bool isFullscreen = false;
+
+	if (isFullscreen) {
+		isFullscreen = false;
+		glfwSetWindowMonitor(window, nullptr, windowX, windowY, windowX, windowY, 0);
+		glViewport(0, 0, windowX, windowY);
+	}
+	else {
+		isFullscreen = true;
+		glfwGetWindowPos(window, &windowX, &windowY);
+		glfwGetWindowSize(window, &windowX, &windowY);
+		auto monitor = glfwGetPrimaryMonitor();
+		const GLFWvidmode * mode = glfwGetVideoMode(monitor);
+		glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, 0);
+		glViewport(0, 0, mode->width, mode->height);
+	}
+}
+
+static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+
+	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, GLFW_TRUE);
+
+	if (key == GLFW_KEY_R && action == GLFW_PRESS)
+		heightFactor_increase = true;
+
+	if (key == GLFW_KEY_R && action == GLFW_RELEASE)
+		heightFactor_increase = false;
+
+	if (key == GLFW_KEY_F && action == GLFW_PRESS)
+		heightFactor_decrease = true;
+
+	if (key == GLFW_KEY_F && action == GLFW_RELEASE)
+		heightFactor_decrease = false;
+
+	if (key == GLFW_KEY_Q && action == GLFW_PRESS)
+		move_map_left = true;
+
+	if (key == GLFW_KEY_Q && action == GLFW_RELEASE)
+		move_map_left = false;
+
+	if (key == GLFW_KEY_E && action == GLFW_PRESS)
+		move_map_right = true;
+
+	if (key == GLFW_KEY_E && action == GLFW_RELEASE)
+		move_map_right = false;
+
+	if (key == GLFW_KEY_LEFT && action == GLFW_PRESS)
+		move_light_left = true;
+
+	if (key == GLFW_KEY_LEFT && action == GLFW_RELEASE)
+		move_light_left = false;
+
+	if (key == GLFW_KEY_RIGHT && action == GLFW_PRESS)
+		move_light_right = true;
+
+	if (key == GLFW_KEY_RIGHT && action == GLFW_RELEASE)
+		move_light_right = false;
+
+	if (key == GLFW_KEY_UP && action == GLFW_PRESS)
+		move_light_up = true;
+
+	if (key == GLFW_KEY_UP && action == GLFW_RELEASE)
+		move_light_up = false;
+
+	if (key == GLFW_KEY_DOWN && action == GLFW_PRESS)
+		move_light_down = true;
+
+	if (key == GLFW_KEY_DOWN && action == GLFW_RELEASE)
+		move_light_down = false;
+
+	if (key == GLFW_KEY_T && action == GLFW_PRESS)
+		light_y_increase = true;
+
+	if (key == GLFW_KEY_T && action == GLFW_RELEASE)
+		light_y_increase = false;
+
+	if (key == GLFW_KEY_G && action == GLFW_PRESS)
+		light_y_decrease = true;
+
+	if (key == GLFW_KEY_G && action == GLFW_RELEASE)
+		light_y_decrease = false;
+
+	if (key == GLFW_KEY_W && action == GLFW_PRESS)
+		pitch_increase = true;
+
+	if (key == GLFW_KEY_W && action == GLFW_RELEASE)
+		pitch_increase = false;
+
+	if (key == GLFW_KEY_S && action == GLFW_PRESS)
+		pitch_decrease = true;
+
+	if (key == GLFW_KEY_S && action == GLFW_RELEASE)
+		pitch_decrease = false;
+
+	if (key == GLFW_KEY_A && action == GLFW_PRESS)
+		yaw_decrease = true;
+
+	if (key == GLFW_KEY_A && action == GLFW_RELEASE)
+		yaw_decrease = false;
+
+	if (key == GLFW_KEY_D && action == GLFW_PRESS)
+		yaw_increase = true;
+
+	if (key == GLFW_KEY_D && action == GLFW_RELEASE)
+		yaw_increase = false;
+
+	if (key == GLFW_KEY_Y && action == GLFW_PRESS)
+		camSpeed_increase = true;
+
+	if (key == GLFW_KEY_Y && action == GLFW_RELEASE)
+		camSpeed_increase = false;
+
+	if (key == GLFW_KEY_H && action == GLFW_PRESS)
+		camSpeed_decrease = true;
+
+	if (key == GLFW_KEY_H && action == GLFW_RELEASE)
+		camSpeed_decrease = false;
+
+	if (key == GLFW_KEY_X && action == GLFW_PRESS)
+		stop_cam = true;
+
+	if (key == GLFW_KEY_X && action == GLFW_RELEASE)
+		stop_cam = false;
+
+	if (key == GLFW_KEY_I && action == GLFW_PRESS)
+		rollback_to_initial = true;
+
+	if (key == GLFW_KEY_I && action == GLFW_RELEASE)
+		rollback_to_initial = false;
+
+	if (key == GLFW_KEY_P && action == GLFW_RELEASE)
+		toggleScreens();
+
+//
+//	if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
+//        camera_pos += camera_front * cam_speed;
+//    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
+//        camera_pos -= camera_front * cam_speed;
+//    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+//        camera_pos +=
+//            glm::normalize(glm::cross(camera_up, camera_front)) * cam_speed;
+//    if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS)
+//        camera_pos -=
+//            glm::normalize(glm::cross(camera_up, camera_front)) * cam_speed;
+}
+
+void moveLight(int toWhere) {
+	switch (toWhere) {
+		case 0: // left
+			light_pos.x += 5;
+			glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
+			break;
+		case 1: // right
+			light_pos.x -= 5;
+			glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
+			break;
+		case 2: // up
+			light_pos.z += 5;
+			glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
+			break;
+		case 3: // down
+			light_pos.z -= 5;
+			glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
+			break;
+		case 4: // increase height
+			light_pos.y += 5;
+			glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
+			break;
+		case 5: // decrease height
+			light_pos.y -= 5;
+			glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
+			break;
+		default:
+			std::cout << "Problem Encountered!\n";
+			break;
+	}
+}
+
+void updateScene() {
+	if (heightFactor_increase)
+		heightFactor += 0.5;
+	if (heightFactor_decrease)
+		heightFactor -= 0.5;
+
+	// TODO: CHECK MAP MOVING and rollback to initial?
+	if (move_map_left)
+		pos.x += 1;
+	else if (move_map_right)
+		pos.x -= 1;
+
+	if (rollback_to_initial) {
+//		the plane will be placed to the initial position with initial configurations of the camera and speed of 0
+		pos = glm::vec3(textureWidth / 2.0, textureWidth / 10.0, -textureWidth / 4.0);
+		light_pos = glm::vec3(textureWidth / 2.0, 100, textureHeight / 2.0);
+		glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
+		camSpeed = 0;
+		pitch = 45.0;
+		yaw = 90.0;
+		heightFactor = 10.0;
+	}
+
+	if (move_light_left)
+		moveLight(0);
+	if (move_light_right)
+		moveLight(1);
+	if (move_light_up)
+		moveLight(2);
+	if (move_light_down)
+		moveLight(3);
+	if (light_y_increase)
+		moveLight(4);
+	if (light_y_decrease)
+		moveLight(5);
+
+	if (pitch_increase) {
+		pitch += 0.05;
+		if (pitch > 89.0)
+			pitch = 89.0;
+	}
+	if (pitch_decrease) {
+		pitch -= 0.05;
+		if (pitch < 0.0)
+			pitch = 0.0;
+	}
+	if (yaw_increase) {
+		yaw += 0.05;
+		if (yaw > 360.0)
+			yaw -= 360.0;
+	}
+	if (yaw_decrease) {
+		yaw -= 0.05;
+		if (yaw < 0.0)
+			yaw += 360.0;
+	}
+
+	if (camSpeed_increase)
+		camSpeed += 0.01;
+	if (camSpeed_decrease)
+		camSpeed -= 0.01;
+	if (stop_cam)
+		camSpeed = 0.0;
+}
+
+static void resizeCallback(GLFWwindow* window, int width, int height) {
+	glViewport(0, 0, width, height);
+}
 
 static void errorCallback(int error, const char * description) {
 	fprintf(stderr, "Error: %s\n", description);
@@ -233,11 +502,11 @@ int main(int argc, char * argv[]) {
 //	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
 
 //	 TODO: GUY'S..
-	  	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-		glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
-		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
 
 	window = glfwCreateWindow(windowX, windowY, "CENG477 - HW3", nullptr, nullptr);
@@ -258,16 +527,15 @@ int main(int argc, char * argv[]) {
 		exit(-1);
 	}
 
-//	glfwSetFramebufferSizeCallback(window, resizeCallback); FOR RESIZE CALLBACK
+	glfwSetFramebufferSizeCallback(window, resizeCallback);
+	glfwSetKeyCallback(window, keyCallback);
+
 	initShaders();
 	initTexture(argv[1], &heightTextureWidth, &heightTextureHeight, true);
 	initTexture(argv[2], &textureWidth, &textureHeight, false);
-
 	initBuffers();
 	setupGeometry();
-
 	glUseProgram(idProgramShader);
-
 	setUniforms();
 
 	// TODO: polygon mode? wireframe?
@@ -280,20 +548,8 @@ int main(int argc, char * argv[]) {
 
 	while (!glfwWindowShouldClose(window)) {
 		render();
+		updateScene();
 		glfwSwapBuffers(window);
-		/* TODO: a key callback or a handleInputs function that is called continiously?
-		 * 	- handle inputs
-		 * 		- altering heightFactor R and F keys
-		 * 		- moving the map using Q and E keys
-		 * 		- moving the light source using arrow keys
-		 * 		- altering height (y position) of the light source using T and G keys
-		 * 		- altering pitch using W and S keys
-		 * 		- altering yaw using A and D keys
-		 * 		- altering camSpeed using Y and H keys
-		 * 		- zeroing camSpeed using X key
-		 * 		- converting back to initial conf using I key (initial cam pos, speed = 0 and etc.)
-		 * 		- toggling to fullscreen using P key
-		 */
 		glfwPollEvents(); // TODO: what does dis do?
 	}
 	cleanUp();

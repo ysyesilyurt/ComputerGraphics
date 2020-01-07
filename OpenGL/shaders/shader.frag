@@ -3,13 +3,8 @@
 // Output Color
 out vec4 color;
 
-uniform mat4 MVP; // ModelViewProjection Matrix
-
 // Texture-related data;
-//uniform sampler2D heightMapTexture;
 uniform sampler2D rgbTexture;
-uniform int textureWidth;
-uniform int textureHeight;
 
 // Data from Vertex Shader
 in vec2 textureCoordinate;

@@ -6,7 +6,8 @@ layout(location = 2) in vec2 tex_coord;
 
 // Data from CPU 
 uniform mat4 MVP; // ModelViewProjection Matrix
-uniform vec3 cameraPosition;
+uniform vec3 cameraPos;
+uniform vec3 lightPos;
 uniform float heightFactor;
 
 // Texture-related data
@@ -22,8 +23,8 @@ out vec3 ToLightVector; // Vector from Vertex to Light;
 out vec3 ToCameraVector; // Vector from Vertex to Camera;
 
 float get_height(in vec2 xy) {
-    vec4 color = texture(heightMapTexture, xy);
-    float height = color.r;
+    vec4 value = texture(heightMapTexture, xy);
+    float height = value.r;
     return height * heightFactor;
 }
 
@@ -34,7 +35,7 @@ vec2 get_coordinates(in vec2 xy_offset) {
     vec2 coord = vec2(1.0f - (position.x + xy_offset.x) * dx, 1.0f - (position.z + xy_offset.y) * dz);
     return coord;
 }
-    
+
 vec3 calculate_normal() {
     vec3 left =       vec3(position.x - 1.0f , get_height(get_coordinates(vec2(-1.0f, 0.0f))), position.z);
     vec3 right =      vec3(position.x + 1.0f, get_height(get_coordinates(vec2(1.0f, 0.0f)) ), position.z);
@@ -54,15 +55,13 @@ vec3 calculate_normal() {
     norm = normalize(norm);
     return norm;
 }
-    
+
 void main() {
     textureCoordinate = tex_coord;
     vec3 calculated_pos = vec3(position.x, get_height(textureCoordinate), position.z);
-    ToCameraVector = normalize(cameraPosition - calculated_pos);
 
-    vec3 light_pos = vec3(textureWidth / 2.0f, 100, textureHeight / 2.0f);
-    ToLightVector = normalize(light_pos - calculated_pos);
-
+    ToCameraVector = normalize(cameraPos - calculated_pos);
+    ToLightVector = normalize(lightPos - calculated_pos);
     vertexNormal = calculate_normal();
 
     gl_Position = MVP * vec4(calculated_pos.xyz, 1.0f);
