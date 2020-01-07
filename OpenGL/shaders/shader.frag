@@ -6,6 +6,7 @@ out vec4 color;
 uniform mat4 MVP; // ModelViewProjection Matrix
 
 // Texture-related data;
+//uniform sampler2D heightMapTexture;
 uniform sampler2D rgbTexture;
 uniform int textureWidth;
 uniform int textureHeight;
@@ -23,8 +24,8 @@ void main() {
   vec4 textureColor = texture(rgbTexture, textureCoordinate);
 
   // apply Phong shading by using the following parameters
-  vec4 ka = vec4(0.25,0.25,0.25,1.0); // reflectance coeff. for ambient
-  vec4 Ia = vec4(0.3,0.3,0.3,1.0); // light color for ambient
+  vec4 ka = vec4(0.25, 0.25, 0.25, 1.0); // reflectance coeff. for ambient
+  vec4 Ia = vec4(0.3, 0.3, 0.3, 1.0); // light color for ambient
   vec4 Id = vec4(1.0, 1.0, 1.0, 1.0); // light color for diffuse
   vec4 kd = vec4(1.0, 1.0, 1.0, 1.0); // reflectance coeff. for diffuse
   vec4 Is = vec4(1.0, 1.0, 1.0, 1.0); // light color for specular
@@ -46,8 +47,10 @@ void main() {
   vec3 specular = spec * (Is * ks).xyz;
   // specular = vec3(0.0f, 0.0f, 0.0f);
 
+  vec3 computedSurfaceColor = ambient + diffuse + specular;
+
   // compute the color using the following equation
-  color = vec4(clamp( textureColor.xyz * (ambient + diffuse + specular), 0.0, 1.0), 1.0);
+  color = vec4(clamp(textureColor.xyz * computedSurfaceColor, 0.0, 1.0), 1.0);
   // color = textureColor;
   // color = vec4(1.0f, 1.0f, 1.0f, 1.0f);
 }

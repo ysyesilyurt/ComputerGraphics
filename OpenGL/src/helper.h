@@ -14,6 +14,7 @@ extern GLuint idProgramShader;
 extern GLuint idFragmentShader;
 extern GLuint idVertexShader;
 extern GLuint idJpegTexture;
+extern GLuint idJpegHeightmap;
 
 void initShaders();
 
@@ -23,7 +24,7 @@ GLuint initFragmentShader(const std::string& filename);
 
 bool readDataFromFile(const std::string& fileName, std::string &data);
 
-void initTexture(char *filename,int *w, int *h);
+void initTexture(char *filename, int *w, int *h, bool isHeightmap);
 
 /* Represent a vertex using below struct */
 struct Vertex {

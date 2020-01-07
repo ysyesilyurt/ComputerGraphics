@@ -3,12 +3,12 @@
 #include <vector>
 #include "helper.h"
 
-// Shaders
+/* Shader and Texture Ids */
 GLuint idProgramShader;
 GLuint idFragmentShader;
 GLuint idVertexShader;
 GLuint idJpegTexture;
-GLuint idMVPMatrix;
+GLuint idJpegHeightmap;
 
 /* Think of our data as a company, VertexArrayObject is the boss and it manages several staff members which
  * are VetexBufferObjects. Hence we will keep 1 VAO (and then be done with it) handle all our tasks using our VBOs */
@@ -36,6 +36,10 @@ float heightFactor = 10.0f;
 // TODO: Initial values of the pitch and yaw
 float pitch = 45.0f;
 float yaw = 90.0f;
+float fovy = 45.0f;
+float aspectRatio = 1.0f;
+float near = 0.1f;
+float far = 1000.0f;
 
 /* Uniform variables */ // TODO: Later alter the names of these and in below
 int MVP_location;
@@ -43,6 +47,8 @@ int height_location;
 int tex_w_location ;
 int tex_h_location;
 int cam_pos_location;
+int heightmap_location;
+int texture_location;
 
 void cleanUp() {
 	// Disable vertex arrays at the end
@@ -133,6 +139,7 @@ void initBuffers() {
 void setupGeometry() {
 
 	/* Initialize Cam vectors first */
+//	pos = glm::vec3(textureWidth / 2.0f, textureWidth / 2.0f, -textureWidth / 2.5f);
 	pos = glm::vec3(textureWidth / 2.0f, textureWidth / 10.0f, -textureWidth / 4.0f);
 	gaze = glm::vec3(0.0f, 0.0f, 1.0f);
 	up = glm::vec3(0.0f, 1.0f, 0.0f); // Warning: up vector?
@@ -143,7 +150,7 @@ void setupGeometry() {
 	M_view = glm::lookAt(pos, pos + gaze, up); // Will be updated during flying TODO: pos + gaze * 0.1f ??
 	// ... a perspective projection with an angle of 45 degrees with the aspect ratio of 1,
 	// ... near and far plane will be 0.1 and 1000 respectively
-	M_projection = glm::perspective(45.0f, 1.0f, 0.1f, 1000.0f); // Will be updated during flying
+	M_projection = glm::perspective(fovy, aspectRatio, near, far); // Will be updated during flying
 
 	MVP = M_projection * M_view * M_model;
 }
@@ -164,6 +171,12 @@ void setUniforms() {
 
 	cam_pos_location = glGetUniformLocation(idProgramShader, "cameraPosition");
 	glUniform3fv(cam_pos_location, 1, glm::value_ptr(pos));
+
+	heightmap_location = glGetUniformLocation(idProgramShader, "heightMapTexture");
+	glUniform1i(heightmap_location, 0);
+
+	texture_location = glGetUniformLocation(idProgramShader, "rgbTexture");
+	glUniform1i(texture_location, 1);
 }
 
 void render() {
@@ -184,7 +197,7 @@ void render() {
 	// Then update the position of the camera
 	pos += camSpeed * gaze;
 	M_view = glm::lookAt(pos, pos + gaze, up); // Will be updated during flying
-	M_projection = glm::perspective(45.0f, 1.0f, 0.1f, 1000.0f); // TODO: Check if this statement is necessary or not since the value does not change?
+	M_projection = glm::perspective(fovy, aspectRatio, near, far); // Will be updated during flying
 	MVP = M_projection * M_view * M_model;
 
 	// Do not forget the update the uniforms of geometry too
@@ -247,8 +260,8 @@ int main(int argc, char * argv[]) {
 
 //	glfwSetFramebufferSizeCallback(window, resizeCallback); FOR RESIZE CALLBACK
 	initShaders();
-//	initTexture(argv[1], &heightTextureWidth, &heightTextureHeight);
-	initTexture(argv[1], &textureWidth, &textureHeight);
+	initTexture(argv[1], &heightTextureWidth, &heightTextureHeight, true);
+	initTexture(argv[2], &textureWidth, &textureHeight, false);
 
 	initBuffers();
 	setupGeometry();

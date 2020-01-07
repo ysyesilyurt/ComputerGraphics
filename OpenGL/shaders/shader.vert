@@ -10,8 +10,9 @@ uniform vec3 cameraPosition;
 uniform float heightFactor;
 
 // Texture-related data
-uniform sampler2D rgbTexture; // TODO: get a height texture and this and USE THEM ACCORDINGLY
-uniform int textureWidth; // TODO: CHANGE BELOW acc. to names of these uniform vars
+uniform sampler2D heightMapTexture;
+uniform sampler2D rgbTexture;
+uniform int textureWidth;
 uniform int textureHeight;
 
 // Output to Fragment Shader
@@ -21,8 +22,8 @@ out vec3 ToLightVector; // Vector from Vertex to Light;
 out vec3 ToCameraVector; // Vector from Vertex to Camera;
 
 float get_height(in vec2 xy) {
-    vec4 color = texture(rgbTexture, xy);
-    float height = 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b; // color.r
+    vec4 color = texture(heightMapTexture, xy);
+    float height = color.r;
     return height * heightFactor;
 }
 
@@ -59,7 +60,7 @@ void main() {
     vec3 calculated_pos = vec3(position.x, get_height(textureCoordinate), position.z);
     ToCameraVector = normalize(cameraPosition - calculated_pos);
 
-    vec3 light_pos = vec3(textureWidth / 2.0f, textureWidth + textureHeight, textureHeight / 2.0f);
+    vec3 light_pos = vec3(textureWidth / 2.0f, 100, textureHeight / 2.0f);
     ToLightVector = normalize(light_pos - calculated_pos);
 
     vertexNormal = calculate_normal();

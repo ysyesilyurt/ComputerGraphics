@@ -35,7 +35,7 @@ GLuint initVertexShader(const std::string& filename)
     glGetShaderInfoLog(vs, 1024, &length, output);
     printf("VS compile log: %s\n", output);
 
-	  return vs;
+    return vs;
 }
 
 GLuint initFragmentShader(const std::string& filename)
@@ -58,7 +58,7 @@ GLuint initFragmentShader(const std::string& filename)
     glGetShaderInfoLog(fs, 1024, &length, output);
     printf("FS compile log: %s\n", output);
 
-	  return fs;
+    return fs;
 }
 
 bool readDataFromFile(const std::string& fileName, std::string &data) {
@@ -83,11 +83,11 @@ bool readDataFromFile(const std::string& fileName, std::string &data) {
     return true;
 }
 
-void initTexture(char *filename, int *w, int *h)
+void initTexture(char *filename, int *w, int *h, bool isHeightmap)
 {
     int width, height;
 
-    unsigned char *raw_image = NULL;
+    unsigned char *raw_image = nullptr;
     int bytes_per_pixel = 3;   /* or 1 for GRACYSCALE images */
     int color_space = JCS_RGB; /* or JCS_GRAYSCALE for grayscale images */
 
@@ -121,7 +121,7 @@ void initTexture(char *filename, int *w, int *h)
     jpeg_start_decompress( &cinfo );
 
     /* allocate memory to hold the uncompressed image */
-    raw_image = (unsigned char*)malloc( cinfo.output_width*cinfo.output_height*cinfo.num_components );
+    raw_image = (unsigned char *) malloc( cinfo.output_width * cinfo.output_height * cinfo.num_components);
     /* now actually read the jpeg into the raw buffer */
     row_pointer[0] = (unsigned char *) malloc( cinfo.output_width*cinfo.num_components);
     /* read one scan line at a time */
@@ -135,12 +135,18 @@ void initTexture(char *filename, int *w, int *h)
     height = cinfo.image_height;
     width = cinfo.image_width;
 
-    glGenTextures(1,&idJpegTexture);
-    glBindTexture(GL_TEXTURE_2D, idJpegTexture);
-    glActiveTexture(GL_TEXTURE0);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, raw_image);
-
-    *w = width;
+    if (isHeightmap) {
+		glGenTextures(1, &idJpegHeightmap);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, idJpegHeightmap);
+    }
+    else {
+		glGenTextures(1, &idJpegTexture);
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, idJpegTexture);
+    }
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, raw_image);
+	*w = width;
     *h = height;
 
     glGenerateMipmap(GL_TEXTURE_2D);
