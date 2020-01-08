@@ -22,6 +22,8 @@ out vec3 vertexNormal; // For Lighting computation
 out vec3 ToLightVector; // Vector from Vertex to Light;
 out vec3 ToCameraVector; // Vector from Vertex to Camera;
 
+// TODO: Refactor all shaders
+
 float get_height(in vec2 xy) {
     vec4 value = texture(heightMapTexture, xy); // TODO: using rgbTexture..
     float height = value.r;
@@ -57,7 +59,7 @@ vec3 calculate_normal() {
 }
 
 void main() {
-//    float dx = 1.0 / textureWidth;
+//    float dx = 1.0 / textureWidth; // TODO: Q and E
 //    float dz = 1.0 / textureHeight;
     textureCoordinate = tex_coord;
 //    textureCoordinate.x += 1000000 * dx;

@@ -160,8 +160,7 @@ void setupGeometry() {
 //	pos = glm::vec3(textureWidth / 2.0, textureWidth / 2.5, -textureWidth / 2.5f); // also make pitch = 0.0
 	pos = glm::vec3(textureWidth / 2.0, textureWidth / 10.0, -textureWidth / 4.0);
 	gaze = glm::vec3(0.0, 0.0, 1.0);
-	up = glm::vec3(0.0, 1.0, 0.0); // Warning: up vector?
-//	glm::vec3 camera_cross = cross(camera_up, camera_gaze); // TODO: HEEEY! dont we need cross
+	up = glm::vec3(0.0, 1.0, 0.0);
 
 	/* Now Set MVP */
 	M_model = glm::mat4(1.0); // Will not change again

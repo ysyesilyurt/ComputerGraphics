@@ -61,11 +61,11 @@ void main() {
 //    float dz = 1.0 / textureHeight;
     textureCoordinate = tex_coord;
 //    textureCoordinate.x += 1000000 * dx;
-    vec3 calculated_pos = position;
+    vec3 calculated_pos = vec3(position.x, position.y + get_height(textureCoordinate), position.z);
 
     ToCameraVector = normalize(cameraPos - calculated_pos);
     ToLightVector = normalize(lightPos - calculated_pos);
-    vertexNormal = normal;
-
+//    vertexNormal = normal;
+    vertexNormal = calculate_normal();
     gl_Position = MVP * vec4(calculated_pos.xyz, 1.0f);
 }

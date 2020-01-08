@@ -20,6 +20,12 @@ GLuint terrainVertexAttribBuffer, terrainIndexBuffer;
 std::vector<int> indices;
 std::vector<Vertex> vertices;
 
+/* Sphere Related variables */
+// TODO: center (0,0,0)
+const int horizontal_split_count = 250;
+const int vertical_split_count = 125;
+const int radius = 350;
+
 /* Texture variables */
 int textureWidth, textureHeight, heightTextureWidth, heightTextureHeight;
 
@@ -28,12 +34,6 @@ static GLFWwindow * window = nullptr;
 int windowX = 1000;
 int windowY = 1000;
 
-/* Sphere Related variables */
-// TODO: center (0,0,0)
-int sectorCount = 250;
-int stackCount = 125;
-int radius = 350;
-
 /* Geometry variables */
 glm::vec3 pos, gaze, up;
 glm::mat4 MVP, M_model, M_view, M_projection;
@@ -41,7 +41,7 @@ glm::vec3 light_pos;
 float camSpeed = 0.0;
 float heightFactor = 0.0;
 // TODO: Initial values of the pitch and yaw
-float pitch = 45.0;
+float pitch = 0.0;
 float yaw = 90.0;
 float fovy = 45.0;
 float aspectRatio = 1.0;
@@ -90,45 +90,38 @@ void cleanUp() {
 }
 
 void initializeVertices() {
-//	const float dx = 1.0 / textureWidth;
-//	const float dz = 1.0 / textureHeight;
 	float x, y, z, xy;                              // vertex position
 	float nx, ny, nz, lengthInv = 1.0f / radius;    // vertex normal
 	float s, t;                                     // vertex texCoord
-	float sectorStep = 2 * M_PI / sectorCount;
-	float stackStep = M_PI / stackCount;
-	float sectorAngle, stackAngle;
+	float alpha, beta;
 
-	for (int i = 0; i <= stackCount; i++) {
-		stackAngle = M_PI / 2 - i * stackStep;      // starting from pi/2 to -pi/2
-		xy = radius * cosf(stackAngle);             // r * cos(u)
-		z = radius * sinf(stackAngle);              // r * sin(u)
-		for (int j = 0; j <= sectorCount; j++) {
-			sectorAngle = j * sectorStep;           // starting from 0 to 2pi
+	for (int i = 0; i <= vertical_split_count; i++) {
+		beta = M_PI / 2 - (i * M_PI / vertical_split_count); // starting from pi/2 to -pi/2
+		xy = radius * cosf(beta);             // r * cos(u)
+		z = radius * sinf(beta);              // r * sin(u)
+		for (int j = 0; j <= horizontal_split_count; j++) {
+			alpha = j * 2 * M_PI / horizontal_split_count;  // starting from 0 to 2pi
 
-			// vertex position (x, y, z)
-			x = xy * cosf(sectorAngle);             // r * cos(u) * cos(v)
-			y = xy * sinf(sectorAngle);             // r * cos(u) * sin(v)
+			// vertex position (cx + x, cy + y, cz + z)
+			x = xy * cosf(alpha);             // r * cos(u) * cos(v)
+			y = xy * sinf(alpha);             // r * cos(u) * sin(v)
 
 			// normalized vertex normal (nx, ny, nz)
 			nx = x * lengthInv;
 			ny = y * lengthInv;
 			nz = z * lengthInv;
-//			normals.push_back(nx);
-//			normals.push_back(ny);
-//			normals.push_back(nz);
 
 			// vertex tex coord (s, t) range between [0, 1]
-			s = (float)j / sectorCount;
-			t = (float)i / stackCount;
+			s = (float)j / horizontal_split_count;
+			t = (float)i / vertical_split_count;
 
 			Vertex vertex;
-			vertex.position = glm::vec3(x, y, z); // y-coords of the vertices will come the from vertex shader from the corresponding texture color(only R channel) on the heightmap image
-			vertex.normal = glm::vec3(nx, ny, nz); // TODO::::: IF NOT NEEDED IN VERTEX SHADER etc. REMOVE FROM HERE AND EVERYWHERE..
-//			vertex.tex_coord = glm::vec2(1.0 - (x * dx), 1.0 - (z * dz));
+			vertex.position = glm::vec3(x, y, z);
+//			vertex.normal = glm::vec3(nx, ny, nz);
+			vertex.normal = glm::vec3(0.0);
 			vertex.tex_coord = glm::vec2(s, t);
 
-			vertices.push_back(vertex); // TODO: check the highlight effects
+			vertices.push_back(vertex);
 		}
 	}
 }
@@ -136,11 +129,11 @@ void initializeVertices() {
 void initializeIndices() {
 	/* Initialize indices per pixel, be careful about the winding order! */
 	int k1, k2;
-	for(int i = 0; i < stackCount; ++i)	{
-		k1 = i * (sectorCount + 1);     // beginning of current stack
-		k2 = k1 + sectorCount + 1;      // beginning of next stack
+	for(int i = 0; i < vertical_split_count; ++i)	{
+		k1 = i * (horizontal_split_count + 1);     // beginning of current stack
+		k2 = k1 + horizontal_split_count + 1;      // beginning of next stack
 
-		for(int j = 0; j < sectorCount; ++j, ++k1, ++k2) {
+		for(int j = 0; j < horizontal_split_count; ++j, ++k1, ++k2) {
 			// 2 triangles per sector excluding first and last stacks
 			// k1 => k2 => k1+1
 			if(i != 0) {
@@ -150,7 +143,7 @@ void initializeIndices() {
 			}
 
 			// k1+1 => k2 => k2+1
-			if(i != (stackCount-1)) {
+			if(i != (horizontal_split_count - 1)) {
 				indices.push_back(k1 + 1);
 				indices.push_back(k2);
 				indices.push_back(k2 + 1);
@@ -193,11 +186,12 @@ void initBuffers() {
 void setupGeometry() {
 
 	/* Initialize Cam vectors first */
-//	pos = glm::vec3(textureWidth / 2.0, textureWidth / 2.5, -textureWidth / 2.5); // also make pitch = 0.0
-	pos = glm::vec3(0, 600, 0);
+	pos = glm::vec3(0, 600, -1000); // also make pitch = 0.0
 	gaze = glm::vec3(0.0, -1.0, 0.0);
-	up = glm::vec3(0.0, 0.0, 1.0); // Warning: up vector?
-//	glm::vec3 camera_cross = cross(camera_up, camera_gaze); // TODO: HEEEY! dont we need cross
+	up = glm::vec3(0.0, 0.0, 1.0);
+//	pos = glm::vec3(0, 600, 0);
+//	gaze = glm::vec3(0.0, -1.0, 0.0);
+//	up = glm::vec3(0.0, 0.0, 1.0);
 
 	/* Now Set MVP */
 	M_model = glm::mat4(1.0); // Will not change again
@@ -206,7 +200,6 @@ void setupGeometry() {
 	MVP = M_projection * M_view * M_model;
 
 	/* Set initial Light Position */
-//	light_pos = glm::vec3(textureWidth / 2.0, 100, textureHeight / 2.0);
 	light_pos = glm::vec3(0, 1600, 0);
 }
 
