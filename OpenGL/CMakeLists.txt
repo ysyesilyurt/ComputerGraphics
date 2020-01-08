@@ -4,7 +4,8 @@ project(OpenGL)
 set(CMAKE_CXX_STANDARD 11)
 
 # The main executable
-add_executable(OpenGL src/main.cpp src/helper.cpp src/helper.h src/jconfig.h)
+#add_executable(OpenGL src/flat/helper.h src/flat/helper.cpp src/flat/jconfig.h src/flat/hw3_flat.cpp)
+add_executable(OpenGL src/sphere/helper.h src/sphere/helper.cpp src/sphere/jconfig.h src/sphere/hw3_sphere.cpp)
 set_property(TARGET OpenGL PROPERTY CXX_STANDARD 11)
 target_compile_options(OpenGL PRIVATE -Wall)
 
