@@ -28,6 +28,8 @@ static GLFWwindow * window = nullptr;
 int windowX = 1000;
 int windowY = 1000;
 
+// TODO: 1-Handle pitch and yaw thing 2-Handle MED inputs 3-Clear other todos 4-Implement Sphere
+
 /* Geometry variables */
 glm::vec3 pos, gaze, up;
 glm::mat4 MVP, M_model, M_view, M_projection;
@@ -92,7 +94,7 @@ void initializeVertices() {
 			Vertex vertex;
 			vertex.position = glm::vec3(x, 0.0, z); // y-coords of the vertices will come the from vertex shader from the corresponding texture color(only R channel) on the heightmap image
 			vertex.normal = glm::vec3(0.0); // TODO::::: IF NOT NEEDED IN VERTEX SHADER etc. REMOVE FROM HERE AND EVERYWHERE..
-			vertex.tex_coord = glm::vec2(1.0 - x * dx, 1.0 - z * dz);
+			vertex.tex_coord = glm::vec2(1.0 - (x * dx), 1.0 - (z * dz));
 
 			vertices.push_back(vertex); // TODO: check the highlight effects
 		}
@@ -155,7 +157,7 @@ void initBuffers() {
 void setupGeometry() {
 
 	/* Initialize Cam vectors first */
-//	pos = glm::vec3(textureWidth / 2.0, textureWidth / 2.0, -textureWidth / 2.5f);
+//	pos = glm::vec3(textureWidth / 2.0, textureWidth / 2.5, -textureWidth / 2.5f); // also make pitch = 0.0
 	pos = glm::vec3(textureWidth / 2.0, textureWidth / 10.0, -textureWidth / 4.0);
 	gaze = glm::vec3(0.0, 0.0, 1.0);
 	up = glm::vec3(0.0, 1.0, 0.0); // Warning: up vector?
@@ -205,7 +207,6 @@ void render() {
 	/* First clear all buffers */
 	glClearColor(0,0,0,1);
 	glClearDepth(1.0); // TODO: DONT KNOW WE NEED?
-//	glClearColor(0.4f, 0.4f, 0.3f, 1.0); // WARNING: WHY THOSE VALUES?
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	/* Now render the frame */
@@ -450,6 +451,8 @@ void updateScene() {
 		pitch += 0.05;
 		if (pitch > 89.0)
 			pitch = 89.0;
+//		up = glm::rotate(up, 0.05f, left); TODO: !! CHECK HERE Update if needed!
+//		gaze = glm::rotate(gaze, 0.05f, left);
 	}
 	if (pitch_decrease) {
 		pitch -= 0.05;

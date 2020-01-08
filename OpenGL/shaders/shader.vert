@@ -23,7 +23,7 @@ out vec3 ToLightVector; // Vector from Vertex to Light;
 out vec3 ToCameraVector; // Vector from Vertex to Camera;
 
 float get_height(in vec2 xy) {
-    vec4 value = texture(heightMapTexture, xy);
+    vec4 value = texture(heightMapTexture, xy); // TODO: using rgbTexture..
     float height = value.r;
     return height * heightFactor;
 }
@@ -57,7 +57,10 @@ vec3 calculate_normal() {
 }
 
 void main() {
+//    float dx = 1.0 / textureWidth;
+//    float dz = 1.0 / textureHeight;
     textureCoordinate = tex_coord;
+//    textureCoordinate.x += 1000000 * dx;
     vec3 calculated_pos = vec3(position.x, get_height(textureCoordinate), position.z);
 
     ToCameraVector = normalize(cameraPos - calculated_pos);
