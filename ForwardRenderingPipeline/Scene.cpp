@@ -169,7 +169,7 @@ bool clipLine(std::pair<Vec4, Color> & pair1, std::pair<Vec4, Color> & pair2) {
         && visible(dy, y_min-v0.y, t_E, t_L) && visible(-dy, v0.y-y_max, t_E, t_L)
         && visible(dz, z_min-v0.z, t_E, t_L) && visible(-dz, v0.z-z_max, t_E, t_L)) {
         isVisible = true;
-        /* At least some part of the line is clipped */
+        /* Check if at least some part of the line is clipped */
         if (t_L < 1) {
             v1.x = v0.x + (dx * t_L);
             v1.y = v0.y + (dy * t_L);
