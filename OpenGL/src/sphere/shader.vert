@@ -12,8 +12,8 @@ uniform float heightFactor;
 
 // Texture-related data
 uniform sampler2D heightMapTexture;
-uniform sampler2D rgbTexture;
-uniform int textureWidth;
+//uniform sampler2D rgbTexture; TODO
+uniform int textureWidth; // TODO remove later from openGl too
 uniform int textureHeight;
 
 // Output to Fragment Shader
@@ -28,39 +28,9 @@ float get_height(in vec2 xy) {
     return height * heightFactor; // TODO: MAKE DIRECTION OF THE HEIGHT AS THE DIRECTION OF NORMAL!
 }
 
-vec2 get_coordinates(in vec2 xy_offset) {
-    float dx = 1.0f / textureWidth;
-    float dz = 1.0f / textureHeight;
-
-    vec2 coord = vec2(1.0f - (position.x + xy_offset.x) * dx, 1.0f - (position.z + xy_offset.y) * dz);
-    return coord;
-}
-
-// TODO: refactor del
-vec3 calculate_normal() {
-    vec3 left =       vec3(position.x - 1.0f , get_height(get_coordinates(vec2(-1.0f, 0.0f))), position.z);
-    vec3 right =      vec3(position.x + 1.0f, get_height(get_coordinates(vec2(1.0f, 0.0f)) ), position.z);
-    vec3 top =        vec3(position.x , get_height(get_coordinates(vec2(0.0f, -1.0f))), position.z - 1.0f);
-    vec3 bottom =     vec3(position.x , get_height(get_coordinates(vec2(0.0f, 1.0f)) ), position.z + 1.0f);
-    vec3 topright =   vec3(position.x + 1.0f, get_height(get_coordinates(vec2(1.0f, 1.0f)) ), position.z - 1.0f);
-    vec3 bottomleft = vec3(position.x - 1.0f, get_height(get_coordinates(vec2(-1.0f, -1.0f))), position.z + 1.0f);
-
-    vec3 pos = vec3(position.x, get_height(textureCoordinate), position.z);
-    vec3 norm = vec3(0.0f, 0.0f, 0.0f);
-    norm += cross(right - pos, topright - pos);
-    norm += cross(topright - pos, top - pos);
-    norm += cross(top - pos, left - pos);
-    norm += cross(left - pos, bottomleft - pos);
-    norm += cross(bottomleft - pos, bottom - pos);
-    norm += cross(bottom - pos, right - pos);
-    norm = normalize(norm);
-    return norm;
-}
-
 void main() {
     textureCoordinate = tex_coord;
     vertexNormal = normal;
-    //    vertexNormal = calculate_normal();
     vec3 heightOffset = vertexNormal * get_height(textureCoordinate);
     vec3 calculated_pos = vec3(position.x + heightOffset.x, position.y + heightOffset.y, position.z + heightOffset.z);
 

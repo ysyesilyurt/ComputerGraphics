@@ -21,7 +21,6 @@ std::vector<int> indices;
 std::vector<Vertex> vertices;
 
 /* Sphere Related variables */
-// TODO: center (0,0,0)
 const int horizontal_split_count = 250;
 const int vertical_split_count = 125;
 const int radius = 350;
@@ -47,6 +46,7 @@ float fovy = 45.0;
 float aspectRatio = 1.0;
 float near = 0.1;
 float far = 1000.0;
+float move_map_angle = 0.0;
 
 /* Uniform variables */ // TODO: Later alter the names of these and in below
 int MVP_location, height_location, tex_w_location, tex_h_location, cam_pos_location,
@@ -179,7 +179,7 @@ void initBuffers() {
 
 void setupGeometry() {
 
-	/* Initialize Cam vectors first */
+	/* Initialize Cam vectors first */ // TODO: GET A more precise Cam Orientation
 	pitch = 0.0;
 	pos = glm::vec3(0, 600, -1000); // also make pitch = 0.0
 	gaze = glm::vec3(0.0, -1.0, 0.0);
@@ -188,8 +188,8 @@ void setupGeometry() {
 //	gaze = glm::vec3(0.0, -1.0, 0.0);
 //	up = glm::vec3(0.0, 0.0, 1.0);
 
-	/* Now Set MVP */
-	M_model = glm::rotate(M_model, (float) glm::radians(-60.0), glm::vec3(1, 0, 0)); // TODO: GET A More precise orientation
+	/* Now Set MVP */ // TODO: GET A More precise Earth orientation
+	M_model = glm::rotate(M_model, (float) glm::radians(-60.0), glm::vec3(1, 0, 0));
 	M_view = glm::lookAt(pos, pos + gaze, up); // Will be updated during flying
 	M_projection = glm::perspective(fovy, aspectRatio, near, far); // Will be updated during flying
 	MVP = M_projection * M_view * M_model;
@@ -272,7 +272,7 @@ void toggleScreens() {
 	}
 }
 
-static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+static void keyCallback(GLFWwindow* win, int key, int scancode, int action, int mods) {
 
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GLFW_TRUE);
@@ -428,20 +428,21 @@ void updateScene() {
 		heightFactor -= 0.5;
 
 	if (move_map_left) {
-//		move_map_angle =  TODO refactor
+		move_map_angle += 0.5;
 		M_model = glm::rotate(M_model, (float) glm::radians(0.5), glm::vec3(0, 0, 1));
 		light_pos = glm::rotate(light_pos, (float) glm::radians(-0.5), glm::vec3(0, 0, 1));
 		glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
 	}
 	else if (move_map_right) {
+		move_map_angle -= 0.5;
 		M_model = glm::rotate(M_model, (float) glm::radians(-0.5), glm::vec3(0, 0, 1));
-		light_pos = glm::rotate(light_pos, (float) glm::radians(+0.5), glm::vec3(0, 0, 1));
+		light_pos = glm::rotate(light_pos, (float) glm::radians(0.5), glm::vec3(0, 0, 1));
 		glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
 	}
 
-	// tODO: fix dis using q/e angle
 	if (rollback_to_initial) {
-//		the plane will be placed to the initial position with initial configurations of the camera and speed of 0
+		M_model = glm::rotate(M_model, (float) glm::radians(-move_map_angle), glm::vec3(0, 0, 1));
+		move_map_angle = 0.0;
 		pos = glm::vec3(0, 600, -1000); // also make pitch = 0.0
 		light_pos = glm::vec3(0, 2500, 0); // TODO: Fix the highlight!
 		glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
@@ -494,7 +495,7 @@ void updateScene() {
 		camSpeed = 0.0;
 }
 
-static void resizeCallback(GLFWwindow* window, int width, int height) {
+static void resizeCallback(GLFWwindow* win, int width, int height) {
 	glViewport(0, 0, width, height);
 }
 
