@@ -25,7 +25,7 @@ out vec3 ToCameraVector; // Vector from Vertex to Camera;
 float get_height(in vec2 xy) {
     vec4 value = texture(heightMapTexture, xy); // TODO: using rgbTexture..
     float height = value.r;
-    return height * heightFactor;
+    return height * heightFactor; // TODO: MAKE DIRECTION OF THE HEIGHT AS THE DIRECTION OF NORMAL!
 }
 
 vec2 get_coordinates(in vec2 xy_offset) {
@@ -36,6 +36,7 @@ vec2 get_coordinates(in vec2 xy_offset) {
     return coord;
 }
 
+// TODO: refactor del
 vec3 calculate_normal() {
     vec3 left =       vec3(position.x - 1.0f , get_height(get_coordinates(vec2(-1.0f, 0.0f))), position.z);
     vec3 right =      vec3(position.x + 1.0f, get_height(get_coordinates(vec2(1.0f, 0.0f)) ), position.z);
@@ -57,15 +58,13 @@ vec3 calculate_normal() {
 }
 
 void main() {
-//    float dx = 1.0 / textureWidth;
-//    float dz = 1.0 / textureHeight;
     textureCoordinate = tex_coord;
-//    textureCoordinate.x += 1000000 * dx;
-    vec3 calculated_pos = vec3(position.x, position.y + get_height(textureCoordinate), position.z);
+    vertexNormal = normal;
+    //    vertexNormal = calculate_normal();
+    vec3 heightOffset = vertexNormal * get_height(textureCoordinate);
+    vec3 calculated_pos = vec3(position.x + heightOffset.x, position.y + heightOffset.y, position.z + heightOffset.z);
 
     ToCameraVector = normalize(cameraPos - calculated_pos);
     ToLightVector = normalize(lightPos - calculated_pos);
-//    vertexNormal = normal;
-    vertexNormal = calculate_normal();
     gl_Position = MVP * vec4(calculated_pos.xyz, 1.0f);
 }

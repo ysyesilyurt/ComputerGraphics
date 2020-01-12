@@ -41,7 +41,7 @@ glm::vec3 light_pos;
 float camSpeed = 0.0;
 float heightFactor = 0.0;
 // TODO: Initial values of the pitch and yaw
-float pitch = 0.0;
+float pitch = 45.0;
 float yaw = 90.0;
 float fovy = 45.0;
 float aspectRatio = 1.0;
@@ -91,10 +91,8 @@ void cleanUp() {
 
 void initializeVertices() {
 	float x, y, z, xy;                              // vertex position
-	float nx, ny, nz, lengthInv = 1.0f / radius;    // vertex normal
-	float s, t;                                     // vertex texCoord
+	float u, v;                                     // vertex texCoord
 	float alpha, beta;
-
 	for (int i = 0; i <= vertical_split_count; i++) {
 		beta = M_PI / 2 - (i * M_PI / vertical_split_count); // starting from pi/2 to -pi/2
 		xy = radius * cosf(beta);             // r * cos(u)
@@ -106,20 +104,16 @@ void initializeVertices() {
 			x = xy * cosf(alpha);             // r * cos(u) * cos(v)
 			y = xy * sinf(alpha);             // r * cos(u) * sin(v)
 
-			// normalized vertex normal (nx, ny, nz)
-			nx = x * lengthInv;
-			ny = y * lengthInv;
-			nz = z * lengthInv;
-
 			// vertex tex coord (s, t) range between [0, 1]
-			s = (float)j / horizontal_split_count;
-			t = (float)i / vertical_split_count;
+			u = (float)j / horizontal_split_count;
+			v = (float)i / vertical_split_count;
 
 			Vertex vertex;
 			vertex.position = glm::vec3(x, y, z);
-//			vertex.normal = glm::vec3(nx, ny, nz);
-			vertex.normal = glm::vec3(0.0);
-			vertex.tex_coord = glm::vec2(s, t);
+			vertex.normal = glm::vec3(x/radius, y/radius, z/radius); // remember n = p-c/r
+			vertex.normal = glm::normalize(vertex.normal);
+//			vertex.normal = glm::vec3(0.0);
+			vertex.tex_coord = glm::vec2(u, v);
 
 			vertices.push_back(vertex);
 		}
@@ -186,6 +180,7 @@ void initBuffers() {
 void setupGeometry() {
 
 	/* Initialize Cam vectors first */
+	pitch = 0.0;
 	pos = glm::vec3(0, 600, -1000); // also make pitch = 0.0
 	gaze = glm::vec3(0.0, -1.0, 0.0);
 	up = glm::vec3(0.0, 0.0, 1.0);
@@ -194,13 +189,13 @@ void setupGeometry() {
 //	up = glm::vec3(0.0, 0.0, 1.0);
 
 	/* Now Set MVP */
-	M_model = glm::mat4(1.0); // Will not change again
-	M_view = glm::lookAt(pos, pos + gaze, up); // Will be updated during flying TODO: pos + gaze * 0.1f ??
+	M_model = glm::rotate(M_model, (float) glm::radians(-60.0), glm::vec3(1, 0, 0)); // TODO: GET A More precise orientation
+	M_view = glm::lookAt(pos, pos + gaze, up); // Will be updated during flying
 	M_projection = glm::perspective(fovy, aspectRatio, near, far); // Will be updated during flying
 	MVP = M_projection * M_view * M_model;
 
 	/* Set initial Light Position */
-	light_pos = glm::vec3(0, 1600, 0);
+	light_pos = glm::vec3(0, 2500, 0); // TODO: Fix the highlight!
 }
 
 void setUniforms() {
@@ -231,10 +226,9 @@ void setUniforms() {
 }
 
 void render() {
-
 	/* First clear all buffers */
 	glClearColor(0,0,0,1);
-	glClearDepth(1.0); // TODO: DONT KNOW WE NEED?
+	glClearDepth(1.0); // TODO: DONT KNOW if WE NEED?
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	/* Now render the frame */
@@ -393,18 +387,6 @@ static void keyCallback(GLFWwindow* window, int key, int scancode, int action, i
 
 	if (key == GLFW_KEY_P && action == GLFW_RELEASE)
 		toggleScreens();
-
-//
-//	if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS)
-//        camera_pos += camera_front * cam_speed;
-//    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
-//        camera_pos -= camera_front * cam_speed;
-//    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
-//        camera_pos +=
-//            glm::normalize(glm::cross(camera_up, camera_front)) * cam_speed;
-//    if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS)
-//        camera_pos -=
-//            glm::normalize(glm::cross(camera_up, camera_front)) * cam_speed;
 }
 
 void moveLight(int toWhere) {
@@ -434,7 +416,7 @@ void moveLight(int toWhere) {
 			glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
 			break;
 		default:
-			std::cout << "Problem Encountered!\n";
+			std::cout << "Problem Encountered during Light Pos Update!\n";
 			break;
 	}
 }
@@ -445,21 +427,29 @@ void updateScene() {
 	if (heightFactor_decrease)
 		heightFactor -= 0.5;
 
-	// TODO: CHECK MAP MOVING and rollback to initial?
-	if (move_map_left)
-		pos.x += 1;
-	else if (move_map_right)
-		pos.x -= 1;
+	if (move_map_left) {
+//		move_map_angle =  TODO refactor
+		M_model = glm::rotate(M_model, (float) glm::radians(0.5), glm::vec3(0, 0, 1));
+		light_pos = glm::rotate(light_pos, (float) glm::radians(-0.5), glm::vec3(0, 0, 1));
+		glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
+	}
+	else if (move_map_right) {
+		M_model = glm::rotate(M_model, (float) glm::radians(-0.5), glm::vec3(0, 0, 1));
+		light_pos = glm::rotate(light_pos, (float) glm::radians(+0.5), glm::vec3(0, 0, 1));
+		glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
+	}
 
+	// tODO: fix dis using q/e angle
 	if (rollback_to_initial) {
 //		the plane will be placed to the initial position with initial configurations of the camera and speed of 0
-		pos = glm::vec3(textureWidth / 2.0, textureWidth / 10.0, -textureWidth / 4.0);
-		light_pos = glm::vec3(textureWidth / 2.0, 100, textureHeight / 2.0);
+		pos = glm::vec3(0, 600, -1000); // also make pitch = 0.0
+		light_pos = glm::vec3(0, 2500, 0); // TODO: Fix the highlight!
 		glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
 		camSpeed = 0;
-		pitch = 45.0;
+//		pitch = 45.0;
+		pitch = 0.0;
 		yaw = 90.0;
-		heightFactor = 10.0;
+		heightFactor = 0.0;
 	}
 
 	if (move_light_left)
@@ -479,8 +469,6 @@ void updateScene() {
 		pitch += 0.05;
 		if (pitch > 89.0)
 			pitch = 89.0;
-//		up = glm::rotate(up, 0.05f, left); TODO: !! CHECK HERE Update if needed!
-//		gaze = glm::rotate(gaze, 0.05f, left);
 	}
 	if (pitch_decrease) {
 		pitch -= 0.05;
@@ -517,7 +505,7 @@ static void errorCallback(int error, const char * description) {
 int main(int argc, char * argv[]) {
 
 	if (argc != 3) {
-		printf("Please run the executable as ./hw3_flat <height_map.jpg> <texture_map.jpg>\n");
+		printf("Please run the executable as ./hw3_sphere <height_map.jpg> <texture_map.jpg>\n");
 		exit(-1);
 	}
 

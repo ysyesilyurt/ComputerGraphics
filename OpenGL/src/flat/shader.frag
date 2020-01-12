@@ -32,14 +32,14 @@ void main() {
   ambient = vec3(0.0f, 0.0f, 0.0f);
 
   // compute diffuse component
-  float diff = max(dot(vertexNormal, ToLightVector), 0.0f);
-  vec3 diffuse = diff * (Id * kd).xyz;
+  float cosTheta = max(dot(vertexNormal, ToLightVector), 0.0f);
+  vec3 diffuse = cosTheta * (Id * kd).xyz;
   // diffuse = vec3(0.0f, 0.0f, 0.0f);
-  
+
   // compute specular component
   vec3 reflected = reflect(-ToLightVector, vertexNormal);
-  float spec = pow(max(dot(reflected, ToCameraVector), 0.0f), exponent);
-  vec3 specular = spec * (Is * ks).xyz;
+  float cosAlpha = pow(max(dot(reflected, ToCameraVector), 0.0f), exponent);
+  vec3 specular = cosAlpha * (Is * ks).xyz;
   // specular = vec3(0.0f, 0.0f, 0.0f);
 
   vec3 computedSurfaceColor = ambient + diffuse + specular;
