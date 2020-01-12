@@ -110,8 +110,7 @@ void initializeVertices() {
 
 			Vertex vertex;
 			vertex.position = glm::vec3(x, y, z);
-			vertex.normal = glm::vec3(x/radius, y/radius, z/radius); // remember n = p-c/r
-			vertex.normal = glm::normalize(vertex.normal);
+			vertex.normal = glm::normalize(glm::vec3(x/radius, y/radius, z/radius)); // remember n = p-c/r
 //			vertex.normal = glm::vec3(0.0);
 			vertex.tex_coord = glm::vec2(u, v);
 
@@ -427,6 +426,7 @@ void updateScene() {
 	if (heightFactor_decrease)
 		heightFactor -= 0.5;
 
+	/* Nice cheap trick: Instead shifting textures over vertices, just rotate it around its axis */ // TODO REMOVE THIS BEFORE SUBMISSION
 	if (move_map_left) {
 		move_map_angle += 0.5;
 		M_model = glm::rotate(M_model, (float) glm::radians(0.5), glm::vec3(0, 0, 1));
@@ -466,7 +466,7 @@ void updateScene() {
 	if (light_y_decrease)
 		moveLight(5);
 
-	if (pitch_increase) {
+	if (pitch_increase) { // TODO: make below continious if needed "It can be rotated continuously."
 		pitch += 0.05;
 		if (pitch > 89.0)
 			pitch = 89.0;

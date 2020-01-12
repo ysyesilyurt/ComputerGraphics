@@ -31,7 +31,7 @@ float get_height(in vec2 xy) {
 void main() {
     textureCoordinate = tex_coord;
     vertexNormal = normal;
-    vec3 heightOffset = vertexNormal * get_height(textureCoordinate);
+    vec3 heightOffset = vertexNormal * get_height(textureCoordinate); // calculating how much movement needs to be done TODO: yavuz sanity check later..
     vec3 calculated_pos = vec3(position.x + heightOffset.x, position.y + heightOffset.y, position.z + heightOffset.z);
 
     ToCameraVector = normalize(cameraPos - calculated_pos);
