@@ -5,48 +5,44 @@ layout(location = 1) in vec3 normal;
 layout(location = 2) in vec2 tex_coord;
 
 // Data from CPU 
-uniform mat4 MVP; // ModelViewProjection Matrix
+uniform mat4 MVP;
 uniform vec3 cameraPos;
 uniform vec3 lightPos;
 uniform float heightFactor;
 
 // Texture-related data
 uniform sampler2D heightMapTexture;
-uniform sampler2D rgbTexture;
 uniform int textureWidth;
 uniform int textureHeight;
+uniform int textureOffset;
 
 // Output to Fragment Shader
-out vec2 textureCoordinate; // For texture-color
-out vec3 vertexNormal; // For Lighting computation
-out vec3 ToLightVector; // Vector from Vertex to Light;
-out vec3 ToCameraVector; // Vector from Vertex to Camera;
+out vec3 vertexNormal;
+out vec3 ToLightVector;
+out vec3 ToCameraVector;
+out vec2 textureCoordinate;
 
-// TODO: Refactor all shaders
+// Global VS variables
+float dx = 1.0f / textureWidth;
+float dz = 1.0f / textureHeight;
+float texOffset = textureOffset * dx;
 
-float get_height(in vec2 xy) {
-    vec4 value = texture(heightMapTexture, xy); // TODO: using rgbTexture..
-    float height = value.r;
-    return height * heightFactor;
+float calcHeight(in vec2 xy) {
+    vec4 value = texture(heightMapTexture, xy);
+    return value.r * heightFactor;
 }
 
-vec2 get_coordinates(in vec2 xy_offset) {
-    float dx = 1.0f / textureWidth;
-    float dz = 1.0f / textureHeight;
-
-    vec2 coord = vec2(1.0f - (position.x + xy_offset.x) * dx, 1.0f - (position.z + xy_offset.y) * dz);
-    return coord;
+vec2 calcCoords(in vec2 xy_offset) {
+    return vec2(1.0f - ((position.x + xy_offset.x) * dx) + texOffset, 1.0f - (position.z + xy_offset.y) * dz);
 }
 
-vec3 calculate_normal() {
-    vec3 left =       vec3(position.x - 1.0f , get_height(get_coordinates(vec2(-1.0f, 0.0f))), position.z);
-    vec3 right =      vec3(position.x + 1.0f, get_height(get_coordinates(vec2(1.0f, 0.0f)) ), position.z);
-    vec3 top =        vec3(position.x , get_height(get_coordinates(vec2(0.0f, -1.0f))), position.z - 1.0f);
-    vec3 bottom =     vec3(position.x , get_height(get_coordinates(vec2(0.0f, 1.0f)) ), position.z + 1.0f);
-    vec3 topright =   vec3(position.x + 1.0f, get_height(get_coordinates(vec2(1.0f, 1.0f)) ), position.z - 1.0f);
-    vec3 bottomleft = vec3(position.x - 1.0f, get_height(get_coordinates(vec2(-1.0f, -1.0f))), position.z + 1.0f);
-
-    vec3 pos = vec3(position.x, get_height(textureCoordinate), position.z);
+vec3 calcNormal(in vec3 pos) {
+    vec3 left = vec3(position.x - 1.0f, calcHeight(calcCoords(vec2(-1.0f, 0.0f))), position.z);
+    vec3 right = vec3(position.x + 1.0f, calcHeight(calcCoords(vec2(1.0f, 0.0f))), position.z);
+    vec3 top = vec3(position.x , calcHeight(calcCoords(vec2(0.0f, -1.0f))), position.z - 1.0f);
+    vec3 bottom = vec3(position.x , calcHeight(calcCoords(vec2(0.0f, 1.0f))), position.z + 1.0f);
+    vec3 topright = vec3(position.x + 1.0f, calcHeight(calcCoords(vec2(1.0f, 1.0f))), position.z - 1.0f);
+    vec3 bottomleft = vec3(position.x - 1.0f, calcHeight(calcCoords(vec2(-1.0f, -1.0f))), position.z + 1.0f);
     vec3 norm = vec3(0.0f, 0.0f, 0.0f);
     norm += cross(right - pos, topright - pos);
     norm += cross(topright - pos, top - pos);
@@ -59,15 +55,11 @@ vec3 calculate_normal() {
 }
 
 void main() {
-//    float dx = 1.0 / textureWidth; // TODO: Q and E
-//    float dz = 1.0 / textureHeight;
     textureCoordinate = tex_coord;
-//    textureCoordinate.x += 1000000 * dx;
-    vec3 calculated_pos = vec3(position.x, get_height(textureCoordinate), position.z);
-
-    ToCameraVector = normalize(cameraPos - calculated_pos);
-    ToLightVector = normalize(lightPos - calculated_pos);
-    vertexNormal = calculate_normal();
-
-    gl_Position = MVP * vec4(calculated_pos.xyz, 1.0f);
+    textureCoordinate.x += texOffset;
+    vec3 pos = vec3(position.x, calcHeight(textureCoordinate), position.z);
+    ToCameraVector = normalize(cameraPos - pos);
+    ToLightVector = normalize(lightPos - pos);
+    vertexNormal = calcNormal(pos);
+    gl_Position = MVP * vec4(pos.xyz, 1.0f);
 }

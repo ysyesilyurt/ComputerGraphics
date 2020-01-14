@@ -9,7 +9,6 @@
 #include <glm/vec3.hpp>
 #include <glm/vec2.hpp>
 
-
 extern GLuint idProgramShader;
 extern GLuint idFragmentShader;
 extern GLuint idVertexShader;
