@@ -26,7 +26,7 @@ const int vertical_split_count = 125;
 const int radius = 350;
 
 /* Texture variables */
-int textureWidth, textureHeight, heightTextureWidth, heightTextureHeight;
+int textureWidth, textureHeight, heightTextureWidth, heightTextureHeight, textureOffset = 0;
 
 /* Window variables */
 static GLFWwindow * window = nullptr;
@@ -34,43 +34,21 @@ int windowX = 1000;
 int windowY = 1000;
 
 /* Geometry variables */
-glm::vec3 pos, gaze, up;
+glm::vec3 pos, gaze, up, light_pos, left;
 glm::mat4 MVP, M_model, M_view, M_projection;
-glm::vec3 light_pos;
-float camSpeed = 0.0;
-float heightFactor = 0.0;
-// TODO: Initial values of the pitch and yaw
-float pitch = 45.0;
-float yaw = 90.0;
-float fovy = 45.0;
-float aspectRatio = 1.0;
-float near = 0.1;
-float far = 1000.0;
-float move_map_angle = 0.0;
+float camSpeed = 0.0, heightFactor = 10.0, fovy = 45.0, aspectRatio = 1.0,
+near = 0.1, far = 1000.0;
 
-/* Uniform variables */ // TODO: Later alter the names of these and in below
-int MVP_location, height_location, tex_w_location, tex_h_location, cam_pos_location,
-heightmap_location, texture_location, light_pos_location;
+/* Uniform variable locations */
+int MVP_location, heightFactor_location, cameraPos_location, heightmap_location,
+texture_location, lightPos_location, textureOffset_location;
 
 /* Key flags */
-bool heightFactor_increase = false;
-bool heightFactor_decrease = false;
-bool pitch_increase = false;
-bool pitch_decrease = false;
-bool yaw_increase = false;
-bool yaw_decrease = false;
-bool stop_cam = false;
-bool camSpeed_increase = false;
-bool camSpeed_decrease = false;
-bool move_map_left = false;
-bool move_map_right = false;
-bool rollback_to_initial = false;
-bool move_light_left = false;
-bool move_light_right = false;
-bool move_light_up = false;
-bool move_light_down = false;
-bool light_y_increase = false;
-bool light_y_decrease = false;
+bool heightFactor_increase = false, heightFactor_decrease = false, pitch_increase = false, pitch_decrease = false,
+yaw_increase = false, yaw_decrease = false, stop_cam = false, camSpeed_increase = false, camSpeed_decrease = false,
+move_map_left = false, move_map_right = false, rollback_to_initial = false, move_light_left = false,
+move_light_right = false, move_light_up = false, move_light_down = false, light_y_increase = false,
+light_y_decrease = false, isFullscreen = false;
 
 void cleanUp() {
 	// Disable vertex arrays at the end
@@ -90,30 +68,24 @@ void cleanUp() {
 }
 
 void initializeVertices() {
-	float x, y, z, xy;                              // vertex position
-	float u, v;                                     // vertex texCoord
-	float alpha, beta;
+	float x, y, z, xy, u, v, alpha, beta;
 	for (int i = 0; i <= vertical_split_count; i++) {
 		beta = M_PI / 2 - (i * M_PI / vertical_split_count); // starting from pi/2 to -pi/2
-		xy = radius * cosf(beta);             // r * cos(u)
-		z = radius * sinf(beta);              // r * sin(u)
+		xy = radius * cosf(beta); // r * cos(u)
+		z = radius * sinf(beta);  // r * sin(u)
 		for (int j = 0; j <= horizontal_split_count; j++) {
 			alpha = j * 2 * M_PI / horizontal_split_count;  // starting from 0 to 2pi
-
 			// vertex position (cx + x, cy + y, cz + z)
 			x = xy * cosf(alpha);             // r * cos(u) * cos(v)
 			y = xy * sinf(alpha);             // r * cos(u) * sin(v)
-
-			// vertex tex coord (s, t) range between [0, 1]
+			// vertex tex coord (u, v) range between [0, 1]
 			u = (float)j / horizontal_split_count;
 			v = (float)i / vertical_split_count;
 
 			Vertex vertex;
 			vertex.position = glm::vec3(x, y, z);
 			vertex.normal = glm::normalize(glm::vec3(x/radius, y/radius, z/radius)); // remember n = p-c/r
-//			vertex.normal = glm::vec3(0.0);
 			vertex.tex_coord = glm::vec2(u, v);
-
 			vertices.push_back(vertex);
 		}
 	}
@@ -122,20 +94,18 @@ void initializeVertices() {
 void initializeIndices() {
 	/* Initialize indices per pixel, be careful about the winding order! */
 	int k1, k2;
-	for(int i = 0; i < vertical_split_count; ++i)	{
-		k1 = i * (horizontal_split_count + 1);     // beginning of current stack
-		k2 = k1 + horizontal_split_count + 1;      // beginning of next stack
-
+	for(int i = 0; i < vertical_split_count; ++i) {
+		k1 = i * (horizontal_split_count + 1);
+		k2 = k1 + horizontal_split_count + 1;
 		for(int j = 0; j < horizontal_split_count; ++j, ++k1, ++k2) {
 			// 2 triangles per sector excluding first and last stacks
-			// k1 => k2 => k1+1
+			/* Provide indices for the first triangle with a correct winding order that suits RH-rule */
 			if(i != 0) {
 				indices.push_back(k1);
 				indices.push_back(k2);
 				indices.push_back(k1 + 1);
 			}
-
-			// k1+1 => k2 => k2+1
+			/* Provide indices for the second triangle with a correct winding order that suits RH-rule */
 			if(i != (horizontal_split_count - 1)) {
 				indices.push_back(k1 + 1);
 				indices.push_back(k2);
@@ -167,9 +137,9 @@ void initBuffers() {
 
 	/* glVertexAttribPointer(array_index, #_of_coods_per_Vertex, type, need_normalization?,
 	 * Byte_offset_between_consecutive_vertices, offset_of_fields_in_vertex_structure) */
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void *>(0)); // TODO: convert to (void *)(0) if applicable
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void *>(offsetof(Vertex, normal))); // TODO: (void*)(offsetof(Vertex, normal))
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), reinterpret_cast<void *>(offsetof(Vertex, tex_coord))); // TODO: (void*)(offsetof(Vertex, tex_coord))
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) nullptr);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) offsetof(Vertex, normal));
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *) (offsetof(Vertex, tex_coord)));
 
 	glEnableVertexAttribArray(0);
 	glEnableVertexAttribArray(1);
@@ -178,44 +148,43 @@ void initBuffers() {
 
 void setupGeometry() {
 
-	/* Initialize Cam vectors first */ // TODO: GET A more precise Cam Orientation
-	pitch = 0.0;
-	pos = glm::vec3(0, 600, -1000); // also make pitch = 0.0
+	/* Initialize Cam vectors first */
+	pos = glm::vec3(-2.0839e-05, 287.325, -523.262);
 	gaze = glm::vec3(0.0, -1.0, 0.0);
 	up = glm::vec3(0.0, 0.0, 1.0);
-//	pos = glm::vec3(0, 600, 0);
-//	gaze = glm::vec3(0.0, -1.0, 0.0);
-//	up = glm::vec3(0.0, 0.0, 1.0);
+	left = glm::cross(up, gaze);
 
-	/* Now Set MVP */ // TODO: GET A More precise Earth orientation
+	up = glm::rotate(up, -1.07999f, left);
+	gaze = glm::rotate(gaze, -1.07999f, left);
+
+	/* Now Set MVP */
 	M_model = glm::rotate(M_model, (float) glm::radians(-60.0), glm::vec3(1, 0, 0));
 	M_view = glm::lookAt(pos, pos + gaze, up); // Will be updated during flying
 	M_projection = glm::perspective(fovy, aspectRatio, near, far); // Will be updated during flying
 	MVP = M_projection * M_view * M_model;
 
 	/* Set initial Light Position */
-	light_pos = glm::vec3(0, 2500, 0); // TODO: Fix the highlight!
+	light_pos = glm::vec3(0, 1600, 0); // TODO: Fix the highlight!
+//	light_pos = glm::rotate(light_pos, (float) glm::radians(-60.0), glm::vec3(0, 0, 1));
+//	glUniform3fv(lightPos_location, 1, glm::value_ptr(light_pos));
 }
 
 void setUniforms() {
-	/* Set the uniform variables so that our shaders can access them */ // TODO: later change the names
+	/* Set the uniform variables so that our shaders can access them */
 	MVP_location = glGetUniformLocation(idProgramShader, "MVP");
 	glUniformMatrix4fv(MVP_location, 1, GL_FALSE, glm::value_ptr(MVP));
 
-	height_location = glGetUniformLocation(idProgramShader, "heightFactor");
-	glUniform1f(height_location, heightFactor);
+	heightFactor_location = glGetUniformLocation(idProgramShader, "heightFactor");
+	glUniform1f(heightFactor_location, heightFactor);
 
-	tex_w_location = glGetUniformLocation(idProgramShader, "textureWidth");
-	glUniform1i(tex_w_location, textureWidth);
+	textureOffset_location = glGetUniformLocation(idProgramShader, "textureOffset");
+	glUniform1i(textureOffset_location, textureOffset);
 
-	tex_h_location = glGetUniformLocation(idProgramShader, "textureHeight");
-	glUniform1i(tex_h_location, textureHeight);
+	cameraPos_location = glGetUniformLocation(idProgramShader, "cameraPos");
+	glUniform3fv(cameraPos_location, 1, glm::value_ptr(pos));
 
-	cam_pos_location = glGetUniformLocation(idProgramShader, "cameraPos");
-	glUniform3fv(cam_pos_location, 1, glm::value_ptr(pos));
-
-	light_pos_location = glGetUniformLocation(idProgramShader, "lightPos");
-	glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
+	lightPos_location = glGetUniformLocation(idProgramShader, "lightPos");
+	glUniform3fv(lightPos_location, 1, glm::value_ptr(light_pos));
 
 	heightmap_location = glGetUniformLocation(idProgramShader, "heightMapTexture");
 	glUniform1i(heightmap_location, 0);
@@ -227,34 +196,28 @@ void setUniforms() {
 void render() {
 	/* First clear all buffers */
 	glClearColor(0,0,0,1);
-	glClearDepth(1.0); // TODO: DONT KNOW if WE NEED?
+	glClearDepth(1.0);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	/* Now render the frame */
-	// First update the gaze acc. to new values of yaw and pitch
-	gaze.x = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
-	gaze.y = sin(glm::radians(pitch - 45.0));
-	gaze.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
-	gaze = glm::normalize(gaze); // do not forget the normalize the gaze
-
 	// Then update the position of the camera
 	pos += camSpeed * gaze;
 	M_view = glm::lookAt(pos, pos + gaze, up); // gluLookAt(eye, center, up)
-	M_projection = glm::perspective(fovy, aspectRatio, near, far); // Will be updated during flying
+	M_projection = glm::perspective(fovy, aspectRatio, near, far);
 	MVP = M_projection * M_view * M_model;
+
+//	std::cout << light_pos.x << light_pos.y << light_pos.z << '\n';
 
 	// Do not forget the update the uniforms of geometry too
 	glUniformMatrix4fv(MVP_location, 1, GL_FALSE, glm::value_ptr(MVP));
-	glUniform3fv(cam_pos_location, 1, glm::value_ptr(pos));
-	glUniform1f(height_location, heightFactor);
+	glUniform3fv(cameraPos_location, 1, glm::value_ptr(pos));
+	glUniform1f(heightFactor_location, heightFactor);
 
 	// Finally draw the scene using indices..
 	glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_INT, nullptr);
 }
 
 void toggleScreens() {
-	static bool isFullscreen = false;
-
 	if (isFullscreen) {
 		isFullscreen = false;
 		glfwSetWindowMonitor(window, nullptr, windowX, windowY, windowX, windowY, 0);
@@ -392,64 +355,59 @@ void moveLight(int toWhere) {
 	switch (toWhere) {
 		case 0: // left
 			light_pos.x += 5;
-			glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
 			break;
 		case 1: // right
 			light_pos.x -= 5;
-			glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
 			break;
 		case 2: // up
 			light_pos.z += 5;
-			glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
 			break;
 		case 3: // down
 			light_pos.z -= 5;
-			glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
 			break;
 		case 4: // increase height
 			light_pos.y += 5;
-			glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
 			break;
 		case 5: // decrease height
 			light_pos.y -= 5;
-			glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
 			break;
 		default:
 			std::cout << "Problem Encountered during Light Pos Update!\n";
 			break;
 	}
+	glUniform3fv(lightPos_location, 1, glm::value_ptr(light_pos));
 }
 
 void updateScene() {
-	if (heightFactor_increase)
+	if (heightFactor_increase) {
 		heightFactor += 0.5;
-	if (heightFactor_decrease)
+		glUniform1f(heightFactor_location, heightFactor);
+	}
+	if (heightFactor_decrease) {
 		heightFactor -= 0.5;
-
-	/* Nice cheap trick: Instead shifting textures over vertices, just rotate it around its axis */ // TODO REMOVE THIS BEFORE SUBMISSION
+		glUniform1f(heightFactor_location, heightFactor);
+	}
 	if (move_map_left) {
-		move_map_angle += 0.5;
-		M_model = glm::rotate(M_model, (float) glm::radians(0.5), glm::vec3(0, 0, 1));
-		light_pos = glm::rotate(light_pos, (float) glm::radians(-0.5), glm::vec3(0, 0, 1));
-		glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
+		textureOffset -= 1;
+		glUniform1i(textureOffset_location, textureOffset);
 	}
-	else if (move_map_right) {
-		move_map_angle -= 0.5;
-		M_model = glm::rotate(M_model, (float) glm::radians(-0.5), glm::vec3(0, 0, 1));
-		light_pos = glm::rotate(light_pos, (float) glm::radians(0.5), glm::vec3(0, 0, 1));
-		glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
+	if (move_map_right){
+		textureOffset += 1;
+		glUniform1i(textureOffset_location, textureOffset);
 	}
-
 	if (rollback_to_initial) {
-		M_model = glm::rotate(M_model, (float) glm::radians(-move_map_angle), glm::vec3(0, 0, 1));
-		move_map_angle = 0.0;
-		pos = glm::vec3(0, 600, -1000); // also make pitch = 0.0
-		light_pos = glm::vec3(0, 2500, 0); // TODO: Fix the highlight!
-		glUniform3fv(light_pos_location, 1, glm::value_ptr(light_pos));
+		pos = glm::vec3(-2.0839e-05, 287.325, -523.262);
+		gaze = glm::vec3(0.0, -1.0, 0.0);
+		up = glm::vec3(0.0, 0.0, 1.0);
+		left = glm::cross(up, gaze);
+		up = glm::rotate(up, -1.07999f, left);
+		gaze = glm::rotate(gaze, -1.07999f, left);
+
+		light_pos = glm::vec3(0, 2500, 0);
+		glUniform3fv(lightPos_location, 1, glm::value_ptr(light_pos));
+		textureOffset = 0;
+		glUniform1i(textureOffset_location, textureOffset);
 		camSpeed = 0;
-//		pitch = 45.0;
-		pitch = 0.0;
-		yaw = 90.0;
 		heightFactor = 0.0;
 	}
 
@@ -466,27 +424,22 @@ void updateScene() {
 	if (light_y_decrease)
 		moveLight(5);
 
-	if (pitch_increase) { // TODO: make below continious if needed "It can be rotated continuously."
-		pitch += 0.05;
-		if (pitch > 89.0)
-			pitch = 89.0;
+	if (pitch_increase) {
+		up = glm::rotate(up, -0.05f, left);
+		gaze = glm::rotate(gaze, -0.05f, left);
 	}
 	if (pitch_decrease) {
-		pitch -= 0.05;
-		if (pitch < 0.0)
-			pitch = 0.0;
+		up = glm::rotate(up, 0.05f, left);
+		gaze = glm::rotate(gaze, 0.05f, left);
 	}
 	if (yaw_increase) {
-		yaw += 0.05;
-		if (yaw > 360.0)
-			yaw -= 360.0;
+		left = glm::rotate(left, -0.05f, up);
+		gaze = glm::rotate(gaze, -0.05f, up);
 	}
 	if (yaw_decrease) {
-		yaw -= 0.05;
-		if (yaw < 0.0)
-			yaw += 360.0;
+		left = glm::rotate(left, 0.05f, up);
+		gaze = glm::rotate(gaze, 0.05f, up);
 	}
-
 	if (camSpeed_increase)
 		camSpeed += 0.01;
 	if (camSpeed_decrease)
@@ -516,18 +469,11 @@ int main(int argc, char * argv[]) {
 		exit(-1);
 	}
 
-//	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-//	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-//	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // BEWARE: IMPORTANT!
-//	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
-
-//	 TODO: GUY'S..
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 	glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
-
 
 	window = glfwCreateWindow(windowX, windowY, "CENG477 - HW3", nullptr, nullptr);
 
@@ -558,19 +504,14 @@ int main(int argc, char * argv[]) {
 	glUseProgram(idProgramShader);
 	setUniforms();
 
-	// TODO: polygon mode? wireframe?
-
 	/* Enable DEPTH-TEST */
 	glEnable(GL_DEPTH_TEST);
-
-	/* ?? Enable STENCIL-TEST */
-	/* ?? Enable LIGHT0 ? */
 
 	while (!glfwWindowShouldClose(window)) {
 		render();
 		updateScene();
 		glfwSwapBuffers(window);
-		glfwPollEvents(); // TODO: what does dis do?
+		glfwPollEvents();
 	}
 	cleanUp();
 	return 0;
