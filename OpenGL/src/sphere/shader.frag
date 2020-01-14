@@ -26,8 +26,8 @@ void main() {
   vec3 ambient = (k_a * i_a).xyz;
   float cosTheta = max(dot(vertexNormal, ToLightVector), 0.0f);
   vec3 diffuse = cosTheta * (i_d * k_d).xyz;
-  vec3 reflected = reflect(-ToLightVector, vertexNormal);
-  float cosAlpha = pow(max(dot(reflected, ToCameraVector), 0.0f), exponent);
+  vec3 reflected = reflect(-normalize(ToLightVector - 0.5), vertexNormal);
+  float cosAlpha = pow(max(dot(reflected, normalize(ToCameraVector + 5)), 0.0f), exponent);
   vec3 specular = cosAlpha * (i_s * k_s).xyz;
 
   vec3 computedSurfaceColor = ambient + diffuse + specular;

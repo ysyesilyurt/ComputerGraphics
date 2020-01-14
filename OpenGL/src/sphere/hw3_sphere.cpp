@@ -388,11 +388,11 @@ void updateScene() {
 		glUniform1f(heightFactor_location, heightFactor);
 	}
 	if (move_map_left) {
-		textureOffset -= 1;
+		textureOffset += 1;
 		glUniform1i(textureOffset_location, textureOffset);
 	}
 	if (move_map_right){
-		textureOffset += 1;
+		textureOffset -= 1;
 		glUniform1i(textureOffset_location, textureOffset);
 	}
 	if (rollback_to_initial) {

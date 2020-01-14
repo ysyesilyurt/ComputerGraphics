@@ -28,11 +28,11 @@ float get_height(in vec2 xy) {
 
 void main() {
     textureCoordinate = tex_coord;
-    textureCoordinate.x += textureOffset * (1.0 / 250);
+    textureCoordinate.x += textureOffset * (1.0 / 250.0);
     vertexNormal = normal;
     vec3 heightOffset = vertexNormal * get_height(textureCoordinate);
     vec3 calculated_pos = position + heightOffset;
-    ToCameraVector = normalize(cameraPos - position);
-    ToLightVector = normalize(lightPos - position);
+    ToCameraVector = normalize(cameraPos - calculated_pos);
+    ToLightVector = normalize(lightPos - calculated_pos);
     gl_Position = MVP * vec4(calculated_pos.xyz, 1.0f);
 }
