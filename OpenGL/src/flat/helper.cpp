@@ -5,8 +5,8 @@ void initShaders() {
 
   idProgramShader = glCreateProgram();
 
-  idVertexShader   = initVertexShader("shader.vert");
-  idFragmentShader = initFragmentShader("shader.frag");
+  idVertexShader   = initVertexShader("flat/shader.vert");
+  idFragmentShader = initFragmentShader("flat/shader.frag");
 
   glAttachShader(idProgramShader, idVertexShader);
   glAttachShader(idProgramShader, idFragmentShader);
@@ -107,7 +107,6 @@ void initTexture(char *filename, int *w, int *h, bool isHeightmap)
         printf("Error opening jpeg file %s\n!", filename );
         return;
     }
-    printf("Texture filename = %s\n",filename);
 
     /* here we set up the standard libjpeg error handler */
     cinfo.err = jpeg_std_error( &jerr );
@@ -136,11 +135,13 @@ void initTexture(char *filename, int *w, int *h, bool isHeightmap)
     width = cinfo.image_width;
 
     if (isHeightmap) {
+		printf("Heightmap Texture filename = %s\n", filename);
 		glGenTextures(1, &idJpegHeightmap);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, idJpegHeightmap);
     }
     else {
+		printf("Texture filename = %s\n", filename);
 		glGenTextures(1, &idJpegTexture);
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, idJpegTexture);

@@ -30,14 +30,13 @@ int textureWidth, textureHeight, heightTextureWidth, heightTextureHeight, textur
 
 /* Window variables */
 static GLFWwindow * window = nullptr;
-int windowX = 1000;
-int windowY = 1000;
+int windowX = 1000, windowY = 1000;
 
 /* Geometry variables */
 glm::vec3 pos, gaze, up, light_pos, left;
 glm::mat4 MVP, M_model, M_view, M_projection;
-float camSpeed = 0.0, heightFactor = 10.0, fovy = 45.0, aspectRatio = 1.0,
-near = 0.1, far = 1000.0;
+float camSpeed = 0.0, heightFactor = 10.0, fovy = 45.0,
+aspectRatio = 1.0, near = 0.1, far = 1000.0;
 
 /* Uniform variable locations */
 int MVP_location, heightFactor_location, cameraPos_location, heightmap_location,
@@ -70,21 +69,19 @@ void cleanUp() {
 void initializeVertices() {
 	float x, y, z, xy, u, v, alpha, beta;
 	for (int i = 0; i <= vertical_split_count; i++) {
-		beta = M_PI / 2 - (i * M_PI / vertical_split_count); // starting from pi/2 to -pi/2
-		xy = radius * cosf(beta); // r * cos(u)
-		z = radius * sinf(beta);  // r * sin(u)
+		beta = M_PI / 2 - (i * M_PI / vertical_split_count); // pi/2 to -pi/2
+		xy = radius * cosf(beta);
+		z = radius * sinf(beta);
 		for (int j = 0; j <= horizontal_split_count; j++) {
-			alpha = j * 2 * M_PI / horizontal_split_count;  // starting from 0 to 2pi
-			// vertex position (cx + x, cy + y, cz + z)
-			x = xy * cosf(alpha);             // r * cos(u) * cos(v)
-			y = xy * sinf(alpha);             // r * cos(u) * sin(v)
-			// vertex tex coord (u, v) range between [0, 1]
+			alpha = j * 2 * M_PI / horizontal_split_count;  // 0 to 2pi
+			x = xy * cosf(alpha);
+			y = xy * sinf(alpha);
 			u = (float)j / horizontal_split_count;
 			v = (float)i / vertical_split_count;
 
 			Vertex vertex;
 			vertex.position = glm::vec3(x, y, z);
-			vertex.normal = glm::normalize(glm::vec3(x/radius, y/radius, z/radius)); // remember n = p-c/r
+			vertex.normal = glm::normalize(glm::vec3(x/radius, y/radius, z/radius));
 			vertex.tex_coord = glm::vec2(u, v);
 			vertices.push_back(vertex);
 		}
@@ -149,7 +146,7 @@ void initBuffers() {
 void setupGeometry() {
 
 	/* Initialize Cam vectors first */
-	pos = glm::vec3(-2.0839e-05, 287.325, -523.262);
+	pos = glm::vec3(0, 600, -1000);
 	gaze = glm::vec3(0.0, -1.0, 0.0);
 	up = glm::vec3(0.0, 0.0, 1.0);
 	left = glm::cross(up, gaze);
@@ -159,14 +156,12 @@ void setupGeometry() {
 
 	/* Now Set MVP */
 	M_model = glm::rotate(M_model, (float) glm::radians(-60.0), glm::vec3(1, 0, 0));
-	M_view = glm::lookAt(pos, pos + gaze, up); // Will be updated during flying
-	M_projection = glm::perspective(fovy, aspectRatio, near, far); // Will be updated during flying
+	M_view = glm::lookAt(pos, pos + gaze, up);
+	M_projection = glm::perspective(fovy, aspectRatio, near, far);
 	MVP = M_projection * M_view * M_model;
 
 	/* Set initial Light Position */
-	light_pos = glm::vec3(0, 1600, 0); // TODO: Fix the highlight!
-//	light_pos = glm::rotate(light_pos, (float) glm::radians(-60.0), glm::vec3(0, 0, 1));
-//	glUniform3fv(lightPos_location, 1, glm::value_ptr(light_pos));
+	light_pos = glm::vec3(0, 1600, 0);
 }
 
 void setUniforms() {
@@ -205,8 +200,6 @@ void render() {
 	M_view = glm::lookAt(pos, pos + gaze, up); // gluLookAt(eye, center, up)
 	M_projection = glm::perspective(fovy, aspectRatio, near, far);
 	MVP = M_projection * M_view * M_model;
-
-//	std::cout << light_pos.x << light_pos.y << light_pos.z << '\n';
 
 	// Do not forget the update the uniforms of geometry too
 	glUniformMatrix4fv(MVP_location, 1, GL_FALSE, glm::value_ptr(MVP));
@@ -402,7 +395,6 @@ void updateScene() {
 		left = glm::cross(up, gaze);
 		up = glm::rotate(up, -1.07999f, left);
 		gaze = glm::rotate(gaze, -1.07999f, left);
-
 		light_pos = glm::vec3(0, 2500, 0);
 		glUniform3fv(lightPos_location, 1, glm::value_ptr(light_pos));
 		textureOffset = 0;
@@ -475,7 +467,7 @@ int main(int argc, char * argv[]) {
 	glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
-	window = glfwCreateWindow(windowX, windowY, "CENG477 - HW3", nullptr, nullptr);
+	window = glfwCreateWindow(windowX, windowY, "CENG477 - HW3 - Spherical Mapping", nullptr, nullptr);
 
 	if (!window) {
 		fprintf(stderr, "Could not create window, exitting..");

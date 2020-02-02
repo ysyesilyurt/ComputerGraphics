@@ -455,7 +455,7 @@ int main(int argc, char * argv[]) {
 	glfwWindowHint(GLFW_RESIZABLE, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 
-	window = glfwCreateWindow(windowX, windowY, "CENG477 - HW3", nullptr, nullptr);
+	window = glfwCreateWindow(windowX, windowY, "CENG477 - HW3 - Flat Mapping", nullptr, nullptr);
 
 	if (!window) {
 		fprintf(stderr, "Could not create window, exitting..");
