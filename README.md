@@ -1,6 +1,16 @@
 # ComputerGraphics
 Implementations for various rendering algorithms and OpenGL homework within the content of Ceng477 Course, written in C++ and GLSL. Development is done on CLion using `CMake`, hence one can directly import parts separately to CLion and run them in there using `CMakeLists`. Also `Makefiles` are provided for further convenience.
 
+Clone with submodules (since I've bound the libraries that is used in OpenGL homework as submodules of this root repository):
+`git clone --recursive git@github.com:ysyesilyurt/ComputerGraphics.git`
+
+Alternatively, if you didn't used `--recursive` option while cloning, you can type:
+```
+cd ComputerGraphics
+git submodule init
+git submodule update
+```
+
 ## RayTracing - Backward Rendering Pipeline
 Implemented a Concurrent version of Ray Tracing Algorithm using Basic Illumination Model with Phong Shading (Ambient + Diffuse + Specular) to Render Scenes such as:
 
