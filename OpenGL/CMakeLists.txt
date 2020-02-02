@@ -4,8 +4,8 @@ project(OpenGL)
 set(CMAKE_CXX_STANDARD 11)
 
 # The main executable
-#add_executable(OpenGL src/flat/helper.h src/flat/helper.cpp src/flat/jconfig.h src/flat/hw3_flat.cpp)
-add_executable(OpenGL src/sphere/helper.h src/sphere/helper.cpp src/sphere/jconfig.h src/sphere/hw3_sphere.cpp)
+#add_executable(OpenGL src/flat/helper.h src/flat/helper.cpp src/flat/hw3_flat.cpp) # Comment this out to run flat part
+add_executable(OpenGL src/sphere/helper.h src/sphere/helper.cpp src/sphere/hw3_sphere.cpp) # Comment this out to run spherical part
 set_property(TARGET OpenGL PROPERTY CXX_STANDARD 11)
 target_compile_options(OpenGL PRIVATE -Wall)
 
