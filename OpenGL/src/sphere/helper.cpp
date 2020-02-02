@@ -5,8 +5,8 @@ void initShaders() {
 
   idProgramShader = glCreateProgram();
 
-  idVertexShader   = initVertexShader("sphere/shader.vert");
-  idFragmentShader = initFragmentShader("sphere/shader.frag");
+  idVertexShader   = initVertexShader("shader.vert");
+  idFragmentShader = initFragmentShader("shader.frag");
 
   glAttachShader(idProgramShader, idVertexShader);
   glAttachShader(idProgramShader, idFragmentShader);
