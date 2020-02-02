@@ -1,0 +1,9 @@
+[submodule "OpenGL/lib/glew"]
+	path = OpenGL/lib/glew
+	url = git@github.com:Perlmint/glew-cmake.git
+[submodule "OpenGL/lib/glfw"]
+	path = OpenGL/lib/glfw
+	url = git@github.com:glfw/glfw.git
+[submodule "OpenGL/lib/glm"]
+	path = OpenGL/lib/glm
+	url = git@github.com:g-truc/glm.git
