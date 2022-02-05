@@ -1,10 +1,13 @@
 # ComputerGraphics
 Implementations for various rendering algorithms and OpenGL homework within the content of Ceng477 Course, written in C++ and GLSL. Development is done on CLion using `CMake`, hence one can directly import parts separately to CLion and run them in there using `CMakeLists`. Also `Makefiles` are provided for further convenience.
 
-Clone with submodules (since repo also includes various OpenGL libraries' repos, I've added those libraries as submodules so that anybody can get it as a bundle):
-`git clone --recursive git@github.com:ysyesilyurt/ComputerGraphics.git`
+## How do I get it?
+* Clone with submodules (since repo also includes various OpenGL libraries' repos, I've added those libraries as submodules so that anybody can get it as a bundle):
+```
+git clone --recursive git@github.com:ysyesilyurt/ComputerGraphics.git
+```
 
-Alternatively, if you didn't use `--recursive` option while cloning, you can type:
+* Alternatively, if you didn't use `--recursive` option while cloning, you can type:
 ```
 cd ComputerGraphics
 git submodule init
